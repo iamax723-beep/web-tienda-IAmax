@@ -1,9 +1,39 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Lock, Loader2, ArrowRight } from "lucide-react";
+
+const loginAction = createServerFn({ method: "POST" })
+  .validator((data: { password: unknown }) => data as { password: const string })
+  .handler(async ({ data }) => {
+    const { setCookie } = await import("vinxi/http");
+    const { generateAdminToken } = await import("@/lib/admin-auth.server");
+    const expectedPassword = process.env.ADMIN_PASSWORD;
+    
+    const setAuthCookie = () => {
+      setCookie("iamax_admin_session", generateAdminToken(), {
+        httpOnly: true,
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: "lax",
+      });
+    };
+
+    if (!expectedPassword && process.env.NODE_ENV !== "production") {
+      setAuthCookie();
+      return { success: true };
+    }
+
+    if (expectedPassword && data.password === expectedPassword) {
+      setAuthCookie();
+      return { success: true };
+    }
+
+    throw new Error("Contraseña incorrecta");
+  });
 
 export const Route = createFileRoute("/login")({
   component: Login,
@@ -21,12 +51,7 @@ function Login() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (!res.ok) throw new Error("Contraseña incorrecta");
+      await loginAction({ data: { password } });
       await router.invalidate();
       router.navigate({ to: "/admin" });
     } catch (err: any) {
