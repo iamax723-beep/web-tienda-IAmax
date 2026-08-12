@@ -4,7 +4,11 @@ import { getStorefrontData } from "@/lib/products.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
+import { Settings, ShoppingCart, X } from "lucide-react";
+import { cartStore } from "@/lib/cartStore";
+import { toast } from "sonner";
+import { useSyncExternalStore } from "react";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -154,11 +158,21 @@ function Index() {
                         ${(Number(product.custom_usd_price ?? product.original_price) * currentRate).toFixed(2)}
                       </span>
                     </div>
-                    <Button size="icon" className="rounded-full h-14 w-14 bg-linear-to-tr from-primary to-secondary hover:shadow-[0_10px_20px_rgba(0,0,0,0.2)] hover:shadow-primary/30 transition-all duration-500 group/btn active:scale-95" disabled={product.stock === 0}>
-                      <Settings className="w-6 h-6 text-white group-hover/btn:rotate-180 transition-transform duration-700" />
-                    </Button>
-                  </div>
-                </CardContent>
+                      <Button size="icon" className="rounded-full h-14 w-14 bg-linear-to-tr from-primary to-secondary hover:shadow-[0_10px_20px_rgba(0,0,0,0.2)] hover:shadow-primary/30 transition-all duration-500 group/btn active:scale-95" disabled={product.stock === 0} onClick={() => {
+                        cartStore.addItem({
+                          product_id: product.id,
+                          name: product.name,
+                          price_usd: Number(product.custom_usd_price ?? product.original_price),
+                          image_url: product.custom_image_url || product.image_url,
+                          store_name: product.stores?.name,
+                          warranty_days: product.warranty_days
+                        });
+                        toast.success("Producto añadido al carrito");
+                      }}>
+                        <ShoppingCart className="w-6 h-6 text-white transition-transform duration-700" />
+                      </Button>
+                    </div>
+                  </CardContent>
               </Card>
             ))}
           </div>
@@ -178,6 +192,84 @@ function Index() {
           </div>
         </div>
       </footer>
+
+      <CartOverlay currentRate={currentRate} />
     </div>
+  );
+}
+
+function CartOverlay({ currentRate }: { currentRate: number }) {
+  const cart = useSyncExternalStore(cartStore.subscribe, cartStore.getSnapshot, cartStore.getServerSnapshot);
+  const totalUsd = cart.items.reduce((sum, item) => sum + item.price_usd * item.quantity, 0);
+  const itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button className="fixed bottom-8 right-8 h-16 w-16 rounded-full shadow-2xl bg-linear-to-br from-primary to-secondary p-0 z-50 hover:scale-105 transition-transform" aria-label="Abrir carrito">
+          <div className="relative">
+            <ShoppingCart className="w-6 h-6 text-white" />
+            {itemCount > 0 && (
+              <span className="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-md">
+                {itemCount}
+              </span>
+            )}
+          </div>
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-full sm:max-w-md flex flex-col h-full z-[100] bg-card/95 backdrop-blur-xl border-l-primary/10">
+        <SheetHeader>
+          <SheetTitle className="text-2xl font-black flex items-center gap-2"><ShoppingCart className="w-6 h-6 text-primary"/> Tu Carrito</SheetTitle>
+          <SheetDescription>Revisa los productos antes de pagar</SheetDescription>
+        </SheetHeader>
+        
+        <div className="flex-1 overflow-y-auto py-6 space-y-4 pr-2">
+          {cart.items.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-50">
+              <ShoppingCart className="w-16 h-16" />
+              <p className="font-semibold">Tu carrito está vacío</p>
+            </div>
+          ) : (
+            cart.items.map(item => (
+              <div key={item.product_id} className="flex gap-4 p-4 bg-muted/30 rounded-2xl border border-white/5 relative group">
+                <div className="w-20 h-24 rounded-xl overflow-hidden shrink-0 bg-muted">
+                  {item.image_url ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" /> : <Settings className="w-8 h-8 m-auto mt-8 opacity-20"/>}
+                </div>
+                <div className="flex-1 flex flex-col justify-between">
+                  <div>
+                    <h4 className="font-bold text-sm line-clamp-2 leading-tight">{item.name}</h4>
+                    <p className="text-xs text-muted-foreground mt-1">{item.store_name}</p>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="font-black text-primary">${(item.price_usd * currentRate).toFixed(2)}</span>
+                    <div className="flex items-center gap-2 bg-background rounded-full border px-1">
+                      <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => cartStore.updateQuantity(item.product_id, item.quantity - 1)}>-</Button>
+                      <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => cartStore.updateQuantity(item.product_id, item.quantity + 1)}>+</Button>
+                    </div>
+                  </div>
+                </div>
+                <button className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-500 bg-background/80 rounded-full p-1" onClick={() => cartStore.removeItem(item.product_id)}><X className="w-4 h-4"/></button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {cart.items.length > 0 && (
+          <div className="pt-6 border-t border-primary/10 space-y-4">
+            <div className="flex justify-between text-lg">
+              <span className="font-bold text-muted-foreground">Total:</span>
+              <div className="text-right">
+                <span className="block font-black text-3xl text-primary">${(totalUsd * currentRate).toFixed(2)}</span>
+                <span className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">${totalUsd.toFixed(2)} USD</span>
+              </div>
+            </div>
+            <Button className="w-full h-14 rounded-2xl bg-linear-to-r from-primary to-secondary font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform" asChild>
+              <a href="/checkout">Proceder al Pago</a>
+            </Button>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
