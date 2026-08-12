@@ -15,4 +15,4 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/railway ./railway
 EXPOSE 3000
-CMD ["npm", "run", "railway:start"]
+CMD ["node", "scripts/railway-start.mjs"]

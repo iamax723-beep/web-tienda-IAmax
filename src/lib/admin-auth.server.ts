@@ -1,4 +1,4 @@
-import { getRequestHeader } from "@tanstack/react-start/server";
+import { getRequestHeader } from "@tanstack/start-server-core/request-response";
 
 export function isAdminAuthorized() {
   const expectedPassword = process.env.ADMIN_PASSWORD;

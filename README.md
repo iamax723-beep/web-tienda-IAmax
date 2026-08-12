@@ -36,7 +36,7 @@ npm run dev
 4. En las variables del servicio web agrega:
    - `DATABASE_URL=${{Postgres.DATABASE_URL}}` (Railway puede crear esta referencia automáticamente).
    - `ADMIN_PASSWORD` con una contraseña larga y única.
-5. El esquema PostgreSQL se crea o actualiza automáticamente antes de arrancar.
+5. El servidor HTTP arranca inmediatamente y el esquema PostgreSQL se crea o actualiza en segundo plano con reintentos.
 6. En Railway, genera un dominio desde **Settings > Networking**. La tienda queda pública y `/admin` solicita usuario `admin` más tu `ADMIN_PASSWORD`.
 
 Railway proporciona `PORT`; el servidor Nitro lo usa automáticamente.

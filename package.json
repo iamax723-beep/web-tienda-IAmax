@@ -8,7 +8,7 @@
     "build": "vite build",
     "start": "node .output/server/index.mjs",
     "migrate": "node scripts/migrate.mjs",
-    "railway:start": "npm run migrate && npm run start",
+    "railway:start": "node scripts/railway-start.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
