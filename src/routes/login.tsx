@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Lock, Loader2, ArrowRight } from "lucide-react";
 
 const loginAction = createServerFn({ method: "POST" })
-  .validator((data: { password: unknown }) => data as { password: const string })
+  .validator((data: { password: unknown }) => data as { password: string })
   .handler(async ({ data }) => {
     const { setCookie } = await import("vinxi/http");
     const { generateAdminToken } = await import("@/lib/admin-auth.server");
