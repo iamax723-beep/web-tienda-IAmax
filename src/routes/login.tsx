@@ -83,7 +83,7 @@ function Login() {
                 autoFocus
                 className="h-14 bg-background/50 border-white/10 text-center text-xl tracking-widest focus-visible:ring-primary/50 rounded-xl"
               />
-              {error && <p className="text-sm text-red-500 font-medium text-center animate-in fade-in slide-in-from-top-2">{error}</p>}
+              {hasError && <p className="text-sm text-red-500 font-medium text-center animate-in fade-in slide-in-from-top-2">Contraseña incorrecta</p>}
             </div>
             <Button
               type="submit"
