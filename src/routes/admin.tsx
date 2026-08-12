@@ -1,18 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Activity, ArrowLeft, CheckCircle2, CloudCog, Database, Eye, EyeOff,
   KeyRound, LoaderCircle, PackageCheck, Pencil, Plus, RefreshCw, Search,
-  ShieldCheck, Store, Trash2, X, Zap,
+  ShieldCheck, Store, Trash2, X, Zap, LogOut
 } from "lucide-react";
 import {
   deleteApiConnection, listApiConnections, saveApiConnection,
   syncStoreProducts, testApiConnection, updateDollarRate,
 } from "@/lib/products.functions";
 
+const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
+  const { isAdminAuthorized } = await import("@/lib/admin-auth.server");
+  return isAdminAuthorized();
+});
+
 export const Route = createFileRoute("/admin")({
+  beforeLoad: async () => {
+    const isAuth = await checkAuth();
+    if (!isAuth) throw redirect({ to: "/login" });
+  },
   component: Admin,
   head: () => ({
     title: "IAmax Hub — Centro de APIs",
@@ -95,6 +105,7 @@ function Admin() {
             <span><strong className="block text-lg text-white">IAmax Hub</strong><small className="text-slate-400">Commerce control center</small></span>
           </a>
           <div className="flex items-center gap-3">
+            <button onClick={async () => { await fetch("/api/logout", { method: "POST" }); window.location.href = "/login"; }} className="icon-button" title="Cerrar sesión"><LogOut size={18} /></button>
             <span className="hidden items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-300 sm:flex"><span className="status-dot" /> Sistema operativo</span>
             <a href="/" className="icon-button" title="Ver tienda"><ArrowLeft size={18} /></a>
           </div>

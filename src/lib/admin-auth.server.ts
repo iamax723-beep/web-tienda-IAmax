@@ -1,33 +1,24 @@
-import { getRequestHeader } from "@tanstack/start-server-core/request-response";
+import { getCookie } from "vinxi/http";
+import crypto from "crypto";
+
+export function generateAdminToken() {
+  const secret = process.env.ADMIN_PASSWORD || "dev-secret";
+  return crypto.createHmac("sha256", secret).update("admin-session").digest("hex");
+}
 
 export function isAdminAuthorized() {
   const expectedPassword = process.env.ADMIN_PASSWORD;
-  if (!expectedPassword) return process.env.NODE_ENV !== "production";
-  const authorization = getRequestHeader("authorization");
-  if (!authorization?.startsWith("Basic ")) return false;
-  try {
-    const decoded = Buffer.from(authorization.slice(6), "base64").toString("utf8");
-    const separator = decoded.indexOf(":");
-    const username = separator >= 0 ? decoded.slice(0, separator) : "";
-    const password = separator >= 0 ? decoded.slice(separator + 1) : "";
-    return username === "admin" && password === expectedPassword;
-  } catch {
-    return false;
-  }
+  if (!expectedPassword && process.env.NODE_ENV !== "production") return true;
+  const cookieToken = getCookie("iamax_admin_session");
+  return cookieToken === generateAdminToken();
 }
 
 export function requireAdmin() {
   if (!isAdminAuthorized()) {
-    throw new Response("No autorizado", {
-      status: 401,
-      headers: { "WWW-Authenticate": 'Basic realm="IAmax Hub", charset="UTF-8"' },
-    });
+    throw new Response("No autorizado", { status: 401 });
   }
 }
 
 export function adminChallenge() {
-  return new Response("Acceso administrativo protegido", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="IAmax Hub", charset="UTF-8"' },
-  });
+  return new Response("Acceso administrativo protegido", { status: 401 });
 }
