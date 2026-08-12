@@ -50,9 +50,14 @@ function Login() {
     setLoading(true);
     setError("");
     try {
-      // Llamar directamente al endpoint de la server function con los headers correctos
-      // Esto evita el bug de TanStack Start donde el contexto del router no está inicializado
-      const fnUrl = (doLogin as any).url as string;
+      // Obtener la URL del server function (con fallback al ID conocido)
+      const fnId = (doLogin as any).serverFnMeta?.id || (doLogin as any).url?.split("/").pop();
+      const fnUrl = (doLogin as any).url || (fnId ? `/_serverFn/${fnId}` : null);
+      console.log("[login] fnUrl:", fnUrl, "doLogin keys:", Object.keys(doLogin as any));
+      if (!fnUrl) {
+        setError("Error de configuración. Recarga la página e intenta de nuevo.");
+        return;
+      }
       const r = await fetch(fnUrl, {
         method: "POST",
         headers: {
@@ -63,7 +68,8 @@ function Login() {
         body: JSON.stringify([{ data: { password } }]),
       });
       if (!r.ok) {
-        setError("Error del servidor. Inténtalo de nuevo.");
+        const body = await r.text().catch(() => "");
+        setError(`Error ${r.status}: ${body.substring(0, 80) || "Inténtalo de nuevo."}`);
         return;
       }
       const result = await r.json();
