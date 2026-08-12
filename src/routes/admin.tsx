@@ -1,6 +1,6 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -21,7 +21,7 @@ const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
     const isAuth = await checkAuth();
-    if (!isAuth) throw redirect({ to: "/login" });
+    return { isAuth };
   },
   component: Admin,
   head: () => ({
@@ -49,8 +49,20 @@ function Admin() {
   const [search, setSearch] = useState("");
   const [rate, setRate] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const { isAuth } = Route.useRouteContext();
+  const router = useRouter();
 
-  const connectionsQuery = useQuery({ queryKey: ["api-connections"], queryFn: () => listApiConnections() });
+  useEffect(() => {
+    if (!isAuth) {
+      router.navigate({ to: "/login" });
+    }
+  }, [isAuth, router]);
+
+  const connectionsQuery = useQuery({ 
+    queryKey: ["api-connections"], 
+    queryFn: () => listApiConnections(),
+    enabled: isAuth
+  });
   const connections = connectionsQuery.data ?? [];
   const filtered = useMemo(() => connections.filter((item) =>
     item.name.toLowerCase().includes(search.toLowerCase()) || item.api_url.toLowerCase().includes(search.toLowerCase())), [connections, search]);

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "start": "node .output/server/index.mjs",
+    "start": "node scripts/railway-start.mjs",
     "migrate": "node scripts/migrate.mjs",
     "railway:start": "node scripts/railway-start.mjs",
     "build:dev": "vite build --mode development",
