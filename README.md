@@ -27,3 +27,18 @@ npm run dev
 - TypeScript
 - React
 - Tailwind CSS
+
+## Deploy en Railway
+
+1. Sube la carpeta `web-admin` a un repositorio y selecciónala como **Root Directory** en Railway.
+2. Railway detectará `railway.json` y ejecutará el build y el servidor Node automáticamente.
+3. Configura estas variables en Railway:
+   - `SUPABASE_URL`
+   - `SUPABASE_PUBLISHABLE_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (secreto; nunca usar una clave publicable aquí)
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
+4. Ejecuta en Supabase, en orden, los archivos de `supabase/migrations`.
+5. En Railway, genera un dominio desde **Settings > Networking**.
+
+Railway proporciona `PORT`; el servidor Nitro lo usa automáticamente.

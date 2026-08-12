@@ -1,0 +1,9 @@
+node_modules
+.output
+dist
+.git
+.env
+.env.*
+!.env.example
+*.tar.gz
+npm-debug.log*
