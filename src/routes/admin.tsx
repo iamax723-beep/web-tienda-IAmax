@@ -13,12 +13,12 @@ import {
   syncStoreProducts, testApiConnection, updateDollarRate,
 } from "@/lib/products.functions";
 
-const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
+export const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
   const { isAdminAuthorized } = await import("@/lib/admin-auth.server");
   return isAdminAuthorized();
 });
 
-const logoutAction = createServerFn({ method: "POST" }).handler(async () => {
+export const logoutAction = createServerFn({ method: "POST" }).handler(async () => {
   const { setCookie } = await import("vinxi/http");
   setCookie("iamax_admin_session", "", {
     httpOnly: true,

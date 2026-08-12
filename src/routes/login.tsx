@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Lock, Loader2, ArrowRight } from "lucide-react";
 
-const loginAction = createServerFn({ method: "POST" })
+export const loginAction = createServerFn({ method: "POST" })
   .validator((data: { password: unknown }) => data as { password: string })
   .handler(async ({ data }) => {
     const { setCookie } = await import("vinxi/http");
