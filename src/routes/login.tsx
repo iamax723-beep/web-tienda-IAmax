@@ -50,24 +50,32 @@ function Login() {
     setLoading(true);
     setError("");
     try {
-      const result = await doLogin({ data: { password } });
-      if (result.ok) {
-        // Redirigir con hard reload para que el servidor lea la nueva cookie
+      // Llamar directamente al endpoint de la server function con los headers correctos
+      // Esto evita el bug de TanStack Start donde el contexto del router no está inicializado
+      const fnUrl = (doLogin as any).url as string;
+      const r = await fetch(fnUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-tsr-serverFn": "true",
+          "accept": "application/json",
+        },
+        body: JSON.stringify([{ data: { password } }]),
+      });
+      if (!r.ok) {
+        setError("Error del servidor. Inténtalo de nuevo.");
+        return;
+      }
+      const result = await r.json();
+      // TanStack serializa el resultado en un array
+      const payload = Array.isArray(result) ? result[0] : result;
+      if (payload?.ok === true) {
         window.location.href = "/admin";
       } else {
         setError("Contraseña incorrecta");
       }
-    } catch (err: unknown) {
-      // Si falla el RPC, hacemos fallback a POST form submission
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = "/__login";
-      const input = document.createElement("input");
-      input.name = "password";
-      input.value = password;
-      form.appendChild(input);
-      document.body.appendChild(form);
-      form.submit();
+    } catch {
+      setError("Error de red. Inténtalo de nuevo.");
     } finally {
       setLoading(false);
     }
