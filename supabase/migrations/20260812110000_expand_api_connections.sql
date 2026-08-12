@@ -13,3 +13,6 @@ ALTER TABLE public.stores
 COMMENT ON COLUMN public.stores.api_key IS 'Secret credential. Never select this column in browser-side queries.';
 COMMENT ON COLUMN public.stores.products_path IS 'Dot path to the products array, e.g. data.products.';
 COMMENT ON COLUMN public.stores.field_mapping IS 'External JSON field names mapped to id, name, description, price and image.';
+
+CREATE UNIQUE INDEX IF NOT EXISTS products_store_external_id_key
+  ON public.products (store_id, external_id);
