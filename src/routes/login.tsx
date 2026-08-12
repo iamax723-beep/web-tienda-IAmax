@@ -41,50 +41,15 @@ export const Route = createFileRoute("/login")({
 });
 
 function Login() {
+  // Capturar error de la URL si el login falló
+  const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const hasError = searchParams.get("error") === "true";
+
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e: React.FormEvent) => {
+    // Native form submission handles this
     setLoading(true);
-    setError("");
-    try {
-      // Obtener la URL del server function (con fallback al ID conocido)
-      const fnId = (doLogin as any).serverFnMeta?.id || (doLogin as any).url?.split("/").pop();
-      const fnUrl = (doLogin as any).url || (fnId ? `/_serverFn/${fnId}` : null);
-      console.log("[login] fnUrl:", fnUrl, "doLogin keys:", Object.keys(doLogin as any));
-      if (!fnUrl) {
-        setError("Error de configuración. Recarga la página e intenta de nuevo.");
-        return;
-      }
-      const r = await fetch(fnUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-tsr-serverFn": "true",
-          "accept": "application/json",
-        },
-        body: JSON.stringify([{ data: { password } }]),
-      });
-      if (!r.ok) {
-        const body = await r.text().catch(() => "");
-        setError(`Error ${r.status}: ${body.substring(0, 80) || "Inténtalo de nuevo."}`);
-        return;
-      }
-      const result = await r.json();
-      // TanStack serializa el resultado en un array
-      const payload = Array.isArray(result) ? result[0] : result;
-      if (payload?.ok === true) {
-        window.location.href = "/admin";
-      } else {
-        setError("Contraseña incorrecta");
-      }
-    } catch {
-      setError("Error de red. Inténtalo de nuevo.");
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -107,10 +72,11 @@ function Login() {
           </div>
         </CardHeader>
         <CardContent className="px-10 pb-10">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form method="POST" action="/login" onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Input
                 type="password"
+                name="password"
                 placeholder="Contraseña"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
