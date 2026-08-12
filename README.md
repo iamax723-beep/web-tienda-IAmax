@@ -40,3 +40,4 @@ npm run dev
 6. En Railway, genera un dominio desde **Settings > Networking**. La tienda queda pública y `/admin` solicita usuario `admin` más tu `ADMIN_PASSWORD`.
 
 Railway proporciona `PORT`; el servidor Nitro lo usa automáticamente.
+El contenedor escucha en `0.0.0.0` y Railway verifica disponibilidad mediante `/health`.
