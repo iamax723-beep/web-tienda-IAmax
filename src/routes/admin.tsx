@@ -46,6 +46,7 @@ function Admin() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [search, setSearch] = useState("");
   const [rate, setRate] = useState("");
@@ -135,14 +136,75 @@ function Admin() {
           <div className="stat-card rate-card"><div><p>Tipo de cambio</p><div className="mt-3 flex gap-2"><input className="compact-input" type="number" min="0" step="0.01" placeholder="Bs por USD" value={rate} onChange={(e) => setRate(e.target.value)}/><button className="mini-action" disabled={!Number(rate) || rateMutation.isPending} onClick={() => rateMutation.mutate()}>{rateMutation.isPending ? <LoaderCircle className="animate-spin" size={17}/> : "Guardar"}</button></div></div></div>
         </section>
 
-        {showForm && <ConnectionForm form={form} setForm={setForm} showKey={showKey} setShowKey={setShowKey} onCancel={() => { setForm(emptyForm); setShowForm(false); }} onSave={() => saveMutation.mutate()} saving={saveMutation.isPending} />}
+        <div className="mt-8 flex gap-4 border-b border-white/10 pb-4">
+          <button className={`pb-2 text-lg font-semibold transition-colors ${!showInventory ? "text-emerald-400 border-b-2 border-emerald-400" : "text-slate-400 hover:text-white"}`} onClick={() => setShowInventory(false)}>Conexiones API</button>
+          <button className={`pb-2 text-lg font-semibold transition-colors ${showInventory ? "text-emerald-400 border-b-2 border-emerald-400" : "text-slate-400 hover:text-white"}`} onClick={() => setShowInventory(true)}>Inventario ({productTotal})</button>
+        </div>
 
-        <section className="panel mt-7">
-          <div className="panel-heading"><div><h2>Conexiones API</h2><p>Credenciales cifradas y solicitudes ejecutadas desde el servidor.</p></div><div className="search-box"><Search size={17}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar conexión..." /></div></div>
-          {connectionsQuery.isLoading ? <div className="empty-state"><LoaderCircle className="animate-spin"/><p>Cargando tus conexiones...</p></div> : filtered.length === 0 ? <div className="empty-state"><Database size={34}/><h3>No hay APIs todavía</h3><p>Agrega tu primer proveedor para comenzar a importar productos.</p><button className="secondary-action" onClick={() => setShowForm(true)}><Plus size={17}/> Añadir API</button></div> : <div className="connection-grid">{filtered.map((item) => <ConnectionCard key={item.id} item={item} busy={busyId === item.id} onEdit={() => editConnection(item)} onAction={(action) => actionMutation.mutate({ id: item.id, action })}/>)}</div>}
-        </section>
+        {!showInventory ? (
+          <>
+            {showForm && <ConnectionForm form={form} setForm={setForm} showKey={showKey} setShowKey={setShowKey} onCancel={() => { setForm(emptyForm); setShowForm(false); }} onSave={() => saveMutation.mutate()} saving={saveMutation.isPending} />}
+            <section className="panel mt-7">
+              <div className="panel-heading"><div><h2>Conexiones API</h2><p>Credenciales cifradas y solicitudes ejecutadas desde el servidor.</p></div><div className="search-box"><Search size={17}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar conexión..." /></div></div>
+              {connectionsQuery.isLoading ? <div className="empty-state"><LoaderCircle className="animate-spin"/><p>Cargando tus conexiones...</p></div> : filtered.length === 0 ? <div className="empty-state"><Database size={34}/><h3>No hay APIs todavía</h3><p>Agrega tu primer proveedor para comenzar a importar productos.</p><button className="secondary-action" onClick={() => setShowForm(true)}><Plus size={17}/> Añadir API</button></div> : <div className="connection-grid">{filtered.map((item) => <ConnectionCard key={item.id} item={item} busy={busyId === item.id} onEdit={() => editConnection(item)} onAction={(action) => actionMutation.mutate({ id: item.id, action })}/>)}</div>}
+            </section>
+          </>
+        ) : (
+          <InventoryTab />
+        )}
       </div>
     </main>
+  );
+}
+
+function InventoryTab() {
+  const { data: products, isLoading } = useQuery({ queryKey: ["admin-products"], queryFn: () => import("@/lib/products.functions").then(m => m.listAdminProducts()) });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ custom_usd_price: "", custom_image_url: "", warranty_days: "" });
+  const queryClient = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => import("@/lib/products.functions").then(m => m.updateProductDetails({ data })),
+    onSuccess: () => { toast.success("Producto actualizado"); setEditingId(null); queryClient.invalidateQueries({ queryKey: ["admin-products"] }); },
+    onError: () => toast.error("Error al actualizar"),
+  });
+
+  if (isLoading) return <div className="empty-state mt-7"><LoaderCircle className="animate-spin"/><p>Cargando inventario...</p></div>;
+
+  return (
+    <section className="panel mt-7">
+      <div className="panel-heading"><div><h2>Inventario Sincronizado</h2><p>Fija tus propios precios (en USD), URLs de imágenes y garantía.</p></div></div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm mt-4">
+          <thead><tr className="border-b border-white/10 text-slate-400"><th className="p-3">Producto</th><th className="p-3">Proveedor</th><th className="p-3">Stock</th><th className="p-3">Garantía</th><th className="p-3">Precio Base</th><th className="p-3">Tu Precio (USD)</th><th className="p-3">Imagen (URL)</th><th className="p-3">Acciones</th></tr></thead>
+          <tbody>
+            {products?.map((p: any) => {
+              const isEditing = editingId === p.id;
+              return (
+                <tr key={p.id} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="p-3 font-semibold text-white">{p.name}</td>
+                  <td className="p-3 text-emerald-400">{p.store_name}</td>
+                  <td className="p-3">{p.stock !== null ? p.stock : 'N/A'}</td>
+                  <td className="p-3">
+                    {isEditing ? <input className="compact-input w-20" type="number" value={editForm.warranty_days} onChange={e => setEditForm(prev => ({...prev, warranty_days: e.target.value}))} placeholder="Días"/> : <span className={p.warranty_days ? "text-yellow-400 font-bold" : "text-slate-400"}>{p.warranty_days ? `${p.warranty_days} días` : "No"}</span>}
+                  </td>
+                  <td className="p-3">${p.original_price}</td>
+                  <td className="p-3">
+                    {isEditing ? <input className="compact-input w-24" type="number" step="0.01" value={editForm.custom_usd_price} onChange={e => setEditForm(prev => ({...prev, custom_usd_price: e.target.value}))} placeholder={p.original_price}/> : <span className={p.custom_usd_price ? "text-green-400 font-bold" : "text-slate-400"}>{p.custom_usd_price ? `$${p.custom_usd_price}` : "Sin fijar"}</span>}
+                  </td>
+                  <td className="p-3">
+                    {isEditing ? <input className="compact-input w-48" type="url" value={editForm.custom_image_url} onChange={e => setEditForm(prev => ({...prev, custom_image_url: e.target.value}))} placeholder="https://..."/> : <div className="max-w-[150px] truncate text-slate-400">{p.custom_image_url || "Sin fijar"}</div>}
+                  </td>
+                  <td className="p-3">
+                    {isEditing ? <div className="flex gap-2"><button className="text-green-400 hover:text-green-300" onClick={() => updateMutation.mutate({ id: p.id, custom_usd_price: editForm.custom_usd_price ? Number(editForm.custom_usd_price) : null, custom_image_url: editForm.custom_image_url || null, warranty_days: editForm.warranty_days ? Number(editForm.warranty_days) : null })}><CheckCircle2 size={18}/></button><button className="text-red-400 hover:text-red-300" onClick={() => setEditingId(null)}><X size={18}/></button></div> : <button className="text-slate-400 hover:text-white" onClick={() => { setEditingId(p.id); setEditForm({ custom_usd_price: p.custom_usd_price?.toString() || "", custom_image_url: p.custom_image_url || "", warranty_days: p.warranty_days?.toString() || "" }); }}><Pencil size={18}/></button>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 

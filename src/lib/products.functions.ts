@@ -4,7 +4,7 @@ import { z } from "zod";
 const mappingSchema = z.object({
   id: z.string().default("id"), name: z.string().default("name"),
   description: z.string().default("description"), price: z.string().default("price"),
-  image: z.string().default("image"),
+  image: z.string().default("image"), stock: z.string().default("stock"),
 });
 const connectionSchema = z.object({
   id: z.string().uuid().optional(), name: z.string().trim().min(2), api_url: z.string().url(),
@@ -44,11 +44,14 @@ async function fetchExternalProducts(store: StoreRecord) {
   return candidates.map((item, index) => {
     const record = item as Record<string, unknown>;
     const read = (path: string) => valueAtPath(record, path);
+    const rawStock = read(store.field_mapping.stock);
+    const parsedStock = rawStock !== undefined && rawStock !== null ? parseInt(String(rawStock), 10) : null;
     return {
       id: String(read(store.field_mapping.id) ?? index),
       name: String(read(store.field_mapping.name) ?? "Producto sin nombre"),
       description: String(read(store.field_mapping.description) ?? ""),
       price: Number(read(store.field_mapping.price) ?? 0), image: String(read(store.field_mapping.image) ?? ""),
+      stock: Number.isNaN(parsedStock) ? null : parsedStock,
     };
   });
 }
@@ -118,9 +121,9 @@ export const syncStoreProducts = createServerFn({ method: "POST" }).validator((d
   const products = await fetchExternalProducts(store);
   await sql.begin(async (tx) => {
     for (const product of products) await tx`
-      INSERT INTO products (store_id,external_id,name,description,original_price,image_url,last_sync)
-      VALUES (${data.storeId},${product.id},${product.name},${product.description || null},${Number.isFinite(product.price) ? product.price : 0},${product.image || null},NOW())
-      ON CONFLICT (store_id,external_id) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,original_price=EXCLUDED.original_price,image_url=EXCLUDED.image_url,last_sync=NOW()`;
+      INSERT INTO products (store_id,external_id,name,description,original_price,image_url,stock,last_sync)
+      VALUES (${data.storeId},${product.id},${product.name},${product.description || null},${Number.isFinite(product.price) ? product.price : 0},${product.image || null},${product.stock},NOW())
+      ON CONFLICT (store_id,external_id) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,original_price=EXCLUDED.original_price,image_url=EXCLUDED.image_url,stock=EXCLUDED.stock,last_sync=NOW()`;
     await tx`UPDATE stores SET last_status='connected',last_error=NULL,last_sync=NOW(),product_count=${products.length},updated_at=NOW() WHERE id=${data.storeId}`;
   });
   return { success: true, count: products.length };
@@ -130,5 +133,22 @@ export const updateDollarRate = createServerFn({ method: "POST" }).validator((da
   const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
   const { getDb } = await import("@/lib/db.server");
   await getDb()`INSERT INTO settings (key,value,updated_at) VALUES ('dollar_rate',${data.rate.toString()},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+  return { success: true };
+});
+
+export const listAdminProducts = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
+  const { getDb } = await import("@/lib/db.server");
+  const sql = getDb();
+  return sql`SELECT p.*, s.name as store_name FROM products p LEFT JOIN stores s ON p.store_id = s.id ORDER BY p.created_at DESC`;
+});
+
+export const updateProductDetails = createServerFn({ method: "POST" }).validator((data) => z.object({ 
+  id: z.string().uuid(), custom_usd_price: z.number().nullable(), custom_image_url: z.string().nullable(), warranty_days: z.number().nullable()
+}).parse(data)).handler(async ({ data }) => {
+  const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
+  const { getDb } = await import("@/lib/db.server");
+  const sql = getDb();
+  await sql`UPDATE products SET custom_usd_price=${data.custom_usd_price}, custom_image_url=${data.custom_image_url}, warranty_days=${data.warranty_days} WHERE id=${data.id}`;
   return { success: true };
 });

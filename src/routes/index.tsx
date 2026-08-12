@@ -105,9 +105,9 @@ function Index() {
             ) : products?.map((product: any) => (
               <Card key={product.id} className="group border border-primary/5 shadow-xl hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] hover:shadow-primary/20 transition-all duration-700 overflow-hidden rounded-[3rem] bg-card flex flex-col hover:-translate-y-2">
                 <div className="relative aspect-[4/5] overflow-hidden">
-                  {product.image_url ? (
+                  {product.custom_image_url || product.image_url ? (
                     <img 
-                      src={product.image_url} 
+                      src={product.custom_image_url || product.image_url} 
                       alt={product.name} 
                       className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
                     />
@@ -117,10 +117,22 @@ function Index() {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
-                  <div className="absolute top-6 left-6">
-                    <span className="px-5 py-2 bg-primary/90 backdrop-blur-xl text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-2xl border border-white/20">
-                      {product.stores?.name}
-                    </span>
+                  <div className="absolute top-6 left-6 right-6 flex flex-col gap-2 items-start">
+                    <div className="flex justify-between items-start w-full">
+                      <span className="px-5 py-2 bg-primary/90 backdrop-blur-xl text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-2xl border border-white/20">
+                        {product.stores?.name}
+                      </span>
+                      {product.stock !== null && product.stock !== undefined && (
+                        <span className={`px-4 py-1.5 backdrop-blur-xl font-bold rounded-xl text-[10px] uppercase tracking-wider shadow-lg border ${product.stock > 0 ? 'bg-green-500/80 text-white border-green-400/30' : 'bg-red-500/80 text-white border-red-400/30'}`}>
+                          {product.stock > 0 ? `${product.stock} en stock` : 'Agotado'}
+                        </span>
+                      )}
+                    </div>
+                    {product.warranty_days ? (
+                      <span className="px-3 py-1 bg-yellow-500/90 backdrop-blur-xl text-white font-black rounded-xl text-[9px] uppercase tracking-[0.2em] shadow-xl border border-yellow-300/30 flex items-center gap-1">
+                        <Settings className="w-3 h-3" /> Garantía: {product.warranty_days} días
+                      </span>
+                    ) : null}
                   </div>
                   <div className="absolute bottom-6 left-6 right-6">
                      <h3 className="font-bold text-xl text-white leading-tight line-clamp-2 drop-shadow-md">
@@ -131,18 +143,18 @@ function Index() {
                 <CardContent className="p-8 flex-1 flex flex-col justify-between bg-linear-to-b from-card to-background">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Precio Anterior</span>
-                      <span className="text-sm line-through text-muted-foreground/60 font-bold">{product.original_price}</span>
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Precio Base</span>
+                      <span className="text-sm line-through text-muted-foreground/60 font-bold">${product.original_price} USD</span>
                     </div>
                   </div>
                   <div className="mt-8 pt-6 border-t border-primary/10 flex items-center justify-between">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Precio IAmax</span>
                       <span className="text-4xl font-black text-primary tracking-tighter">
-                        ${(Number(product.original_price) * currentRate).toFixed(2)}
+                        ${(Number(product.custom_usd_price ?? product.original_price) * currentRate).toFixed(2)}
                       </span>
                     </div>
-                    <Button size="icon" className="rounded-full h-14 w-14 bg-linear-to-tr from-primary to-secondary hover:shadow-[0_10px_20px_rgba(0,0,0,0.2)] hover:shadow-primary/30 transition-all duration-500 group/btn active:scale-95">
+                    <Button size="icon" className="rounded-full h-14 w-14 bg-linear-to-tr from-primary to-secondary hover:shadow-[0_10px_20px_rgba(0,0,0,0.2)] hover:shadow-primary/30 transition-all duration-500 group/btn active:scale-95" disabled={product.stock === 0}>
                       <Settings className="w-6 h-6 text-white group-hover/btn:rotate-180 transition-transform duration-700" />
                     </Button>
                   </div>
