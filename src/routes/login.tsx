@@ -29,10 +29,10 @@ const loginAction = createServerFn({ method: "POST" })
 
     if (expectedPassword && data.password === expectedPassword) {
       setAuthCookie();
-      return { success: true };
+      return { success: true, error: null };
     }
 
-    throw new Error("Contraseña incorrecta");
+    return { success: false, error: "Contraseña incorrecta" };
   });
 
 export const Route = createFileRoute("/login")({
@@ -51,11 +51,15 @@ function Login() {
     setLoading(true);
     setError("");
     try {
-      await loginAction({ data: { password } });
+      const res = await loginAction({ data: { password } });
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
       await router.invalidate();
       router.navigate({ to: "/admin" });
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Error al conectar");
     } finally {
       setLoading(false);
     }
