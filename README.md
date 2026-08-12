@@ -32,13 +32,11 @@ npm run dev
 
 1. Sube la carpeta `web-admin` a un repositorio y selecciónala como **Root Directory** en Railway.
 2. Railway detectará `railway.json` y ejecutará el build y el servidor Node automáticamente.
-3. Configura estas variables en Railway:
-   - `SUPABASE_URL`
-   - `SUPABASE_PUBLISHABLE_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (secreto; nunca usar una clave publicable aquí)
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_PUBLISHABLE_KEY`
-4. Ejecuta en Supabase, en orden, los archivos de `supabase/migrations`.
-5. En Railway, genera un dominio desde **Settings > Networking**.
+3. Añade un servicio **PostgreSQL** al mismo proyecto Railway.
+4. En las variables del servicio web agrega:
+   - `DATABASE_URL=${{Postgres.DATABASE_URL}}` (Railway puede crear esta referencia automáticamente).
+   - `ADMIN_PASSWORD` con una contraseña larga y única.
+5. El esquema PostgreSQL se crea o actualiza automáticamente antes de arrancar.
+6. En Railway, genera un dominio desde **Settings > Networking**. La tienda queda pública y `/admin` solicita usuario `admin` más tu `ADMIN_PASSWORD`.
 
 Railway proporciona `PORT`; el servidor Nitro lo usa automáticamente.

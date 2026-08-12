@@ -1,10 +1,15 @@
 import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
-import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
+import { adminChallenge, isAdminAuthorized } from "@/lib/admin-auth.server";
+import { getRequest } from "@tanstack/react-start/server";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
+    const request = getRequest();
+    if (new URL(request.url).pathname.startsWith("/admin") && !isAdminAuthorized()) {
+      return adminChallenge();
+    }
     return await next();
   } catch (error) {
     if (error != null && typeof error === "object" && "statusCode" in error) {
@@ -26,6 +31,5 @@ const csrfMiddleware = createCsrfMiddleware({
 });
 
 export const startInstance = createStart(() => ({
-  functionMiddleware: [attachSupabaseAuth],
   requestMiddleware: [errorMiddleware, csrfMiddleware],
 }));

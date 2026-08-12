@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { getStorefrontData } from "@/lib/products.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -17,25 +17,12 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { data: products, isLoading: productsLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("*, stores(name)");
-      if (error) throw error;
-      return data;
-    },
+  const { data, isLoading: productsLoading } = useQuery({
+    queryKey: ["storefront"],
+    queryFn: () => getStorefrontData(),
   });
-
-  const { data: settings } = useQuery({
-    queryKey: ["settings"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("settings").select("*");
-      if (error) throw error;
-      return data.reduce((acc: any, curr) => ({ ...acc, [curr.key]: curr.value }), {});
-    },
-  });
-
-  const currentRate = parseFloat(settings?.dollar_rate || "1.0");
+  const products = data?.products ?? [];
+  const currentRate = data?.dollarRate ?? 1;
 
   return (
     <div className="min-h-screen bg-background">
