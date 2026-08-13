@@ -170,7 +170,13 @@ function OrderPage() {
                   <p className="font-bold text-blue-400">Comprobante enviado</p>
                   <p className="text-sm text-blue-400/80">El administrador está verificando tu pago. Esta página se actualizará automáticamente.</p>
                   {order.payment_proof_url && (
-                    <a href={order.payment_proof_url} target="_blank" rel="noreferrer" className="text-xs underline text-blue-300 mt-2 block">Ver comprobante subido</a>
+                    <div className="mt-4 flex justify-center">
+                      <img 
+                        src={order.payment_proof_url} 
+                        alt="Comprobante Subido" 
+                        className="max-w-[200px] w-full rounded-xl border border-white/10 shadow-lg object-cover" 
+                      />
+                    </div>
                   )}
                 </div>
               )}
