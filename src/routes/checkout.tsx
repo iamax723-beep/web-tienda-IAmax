@@ -157,21 +157,28 @@ function Checkout() {
               </div>
               
               <div className="border-t border-white/10 pt-6 space-y-4">
-                <div className="flex justify-between text-sm text-muted-foreground font-medium">
-                  <span>Subtotal USD</span>
-                  <span>${totalUsd.toFixed(2)} USD</span>
-                </div>
-                <div className="flex justify-between text-sm text-muted-foreground font-medium">
-                  <span>Tipo de cambio</span>
-                  <span>1 USD = {currentRate}</span>
-                </div>
-                <div className="flex justify-between items-end pt-4 border-t border-white/10">
-                  <span className="font-bold">Total a Pagar</span>
-                  <div className="text-right">
-                    <span className="block text-4xl font-black text-primary">${totalFiat.toFixed(2)}</span>
+                  <div className="flex justify-between text-sm text-muted-foreground font-medium">
+                    <span>Subtotal USD</span>
+                    <span>${totalUsd.toFixed(2)} USD</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground font-medium">
+                    <span>Tipo de cambio</span>
+                    <span>1 USD = {currentRate}</span>
+                  </div>
+                  <div className="flex justify-between items-end pt-4 border-t border-white/10">
+                    <span className="font-bold">Total a Pagar</span>
+                    <div className="text-right">
+                      {currentRate !== 1 ? (
+                        <>
+                          <span className="block text-4xl font-black text-primary">Bs. {totalFiat.toFixed(2)}</span>
+                          <span className="text-sm font-bold text-muted-foreground">${totalUsd.toFixed(2)} USD</span>
+                        </>
+                      ) : (
+                        <span className="block text-4xl font-black text-primary">${totalFiat.toFixed(2)} USD</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
               <Button form="checkout-form" type="submit" disabled={orderMutation.isPending} className="w-full h-14 rounded-2xl bg-linear-to-r from-primary to-secondary font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform mt-8">
                 {orderMutation.isPending ? <LoaderCircle className="animate-spin" /> : "Confirmar Pedido"}

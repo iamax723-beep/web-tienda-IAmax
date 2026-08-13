@@ -154,11 +154,18 @@ function Index() {
                   <div className="mt-8 pt-6 border-t border-primary/10 flex items-center justify-between">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Precio IAmax</span>
-                      <span className="text-4xl font-black text-primary tracking-tighter">
-                        ${(Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))) * currentRate).toFixed(2)}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-4xl font-black text-primary tracking-tighter">
+                          ${Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))).toFixed(2)} <span className="text-xl">USD</span>
+                        </span>
+                        {currentRate !== 1 && (
+                          <span className="text-sm font-bold text-muted-foreground">
+                            ≈ Bs. {(Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))) * currentRate).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                      <Button size="icon" className="rounded-full h-14 w-14 bg-linear-to-tr from-primary to-secondary hover:shadow-[0_10px_20px_rgba(0,0,0,0.2)] hover:shadow-primary/30 transition-all duration-500 group/btn active:scale-95" disabled={product.stock === 0} onClick={() => {
+                      <Button size="icon" className="rounded-full h-14 w-14 bg-linear-to-tr from-primary to-secondary hover:shadow-[0_10px_20px_rgba(0,0,0,0.2)] hover:shadow-primary/30 transition-all duration-500 group/btn active:scale-95 shrink-0" disabled={product.stock === 0} onClick={() => {
                         cartStore.addItem({
                           product_id: product.id,
                           name: product.name,
@@ -241,7 +248,10 @@ function CartOverlay({ currentRate }: { currentRate: number }) {
                     <p className="text-xs text-muted-foreground mt-1">{item.store_name}</p>
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="font-black text-primary">${(item.price_usd * currentRate).toFixed(2)}</span>
+                    <div className="flex flex-col">
+                      <span className="font-black text-primary">${item.price_usd.toFixed(2)} USD</span>
+                      {currentRate !== 1 && <span className="text-[10px] text-muted-foreground font-bold">≈ Bs. {(item.price_usd * currentRate).toFixed(2)}</span>}
+                    </div>
                     <div className="flex items-center gap-2 bg-background rounded-full border px-1">
                       <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => cartStore.updateQuantity(item.product_id, item.quantity - 1)}>-</Button>
                       <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
@@ -257,11 +267,11 @@ function CartOverlay({ currentRate }: { currentRate: number }) {
 
         {cart.items.length > 0 && (
           <div className="pt-6 border-t border-primary/10 space-y-4">
-            <div className="flex justify-between text-lg">
+            <div className="flex justify-between text-lg items-center">
               <span className="font-bold text-muted-foreground">Total:</span>
               <div className="text-right">
-                <span className="block font-black text-3xl text-primary">${(totalUsd * currentRate).toFixed(2)}</span>
-                <span className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">${totalUsd.toFixed(2)} USD</span>
+                <span className="block font-black text-3xl text-primary">${totalUsd.toFixed(2)} <span className="text-xl">USD</span></span>
+                {currentRate !== 1 && <span className="text-sm text-muted-foreground font-bold">≈ Bs. {(totalUsd * currentRate).toFixed(2)}</span>}
               </div>
             </div>
             <Button className="w-full h-14 rounded-2xl bg-linear-to-r from-primary to-secondary font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform" asChild>
