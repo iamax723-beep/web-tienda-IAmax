@@ -13,6 +13,7 @@ export const createOrder = createServerFn({ method: "POST" })
     customer_email: z.string().email("Correo inválido"),
     customer_phone: z.string().min(6, "Teléfono requerido"),
     payment_method_id: z.string().uuid("Seleccione un método de pago"),
+    tx_id: z.string().optional(),
     items: z.array(z.object({
       product_id: z.string().uuid(),
       product_name: z.string(),
@@ -32,10 +33,10 @@ export const createOrder = createServerFn({ method: "POST" })
       const [order] = await sql`
         INSERT INTO orders (
           customer_name, customer_email, customer_phone, 
-          total_usd, total_fiat, payment_method_id, status
+          total_usd, total_fiat, payment_method_id, tx_id, status
         ) VALUES (
           ${data.customer_name}, ${data.customer_email}, ${data.customer_phone},
-          ${data.total_usd}, ${data.total_fiat}, ${data.payment_method_id}, 'pending'
+          ${data.total_usd}, ${data.total_fiat}, ${data.payment_method_id}, ${data.tx_id || null}, 'pending'
         ) RETURNING id
       `;
 
@@ -60,12 +61,13 @@ export const createOrder = createServerFn({ method: "POST" })
 
         if (config.telegram_bot_token && config.telegram_chat_id) {
           const itemsText = data.items.map(i => `${i.quantity}x ${i.product_name} ($${i.unit_price_usd})`).join('\\n');
+          const txText = data.tx_id ? `\\n*Binance TX-ID:* \`${data.tx_id}\`\\n` : '';
           const message = `🔔 *Nuevo Pedido Recibido*\\n\\n` +
             `*Cliente:* ${data.customer_name}\\n` +
             `*Teléfono:* ${data.customer_phone}\\n` +
-            `*Total:* $${data.total_usd} USD\\n\\n` +
+            `*Total:* $${data.total_usd} USD\\n` + txText + `\\n` +
             `*Productos:*\\n${itemsText}\\n\\n` +
-            `Revisa el panel de administración para aprobarlo.`;
+            `Revisa el panel de administración o usa el botón de abajo para aprobarlo y entregarlo al instante.`;
 
           await fetch(`https://api.telegram.org/bot${config.telegram_bot_token}/sendMessage`, {
             method: 'POST',
@@ -73,7 +75,12 @@ export const createOrder = createServerFn({ method: "POST" })
             body: JSON.stringify({
               chat_id: config.telegram_chat_id,
               text: message,
-              parse_mode: 'Markdown'
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "✅ Aprobar y Entregar", callback_data: `approve_${order.id}` }]
+                ]
+              }
             })
           }).catch(e => console.error("Error enviando telegram:", e));
         }
@@ -173,6 +180,7 @@ export const approveOrder = createServerFn({ method: "POST" })
           },
           body: JSON.stringify({
             product_id: item.provider_id,
+            category_id: !isNaN(Number(item.provider_id)) ? Number(item.provider_id) : item.provider_id,
             quantity: item.quantity
           })
         });
@@ -181,10 +189,10 @@ export const approveOrder = createServerFn({ method: "POST" })
         
         if (!response.ok) {
           console.error("Error from API:", result);
-          throw new Error(result.error || result.message || "Error al comprar el producto");
+          throw new Error(result.error?.message || result.error || result.message || "Error al comprar el producto");
         }
 
-        const keys = result.data?.keys || result.keys || [];
+        const keys = result.credentials || result.data?.keys || result.keys || [];
         allKeys.push(...keys.map((k: string) => `${item.product_name}: ${k}`));
 
       } catch (err: any) {

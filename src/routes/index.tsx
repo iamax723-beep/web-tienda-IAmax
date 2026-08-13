@@ -145,13 +145,7 @@ function Index() {
                   </div>
                 </div>
                 <CardContent className="p-8 flex-1 flex flex-col justify-between bg-linear-to-b from-card to-background">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Precio Base</span>
-                      <span className="text-sm line-through text-muted-foreground/60 font-bold">${product.original_price} USD</span>
-                    </div>
-                  </div>
-                  <div className="mt-8 pt-6 border-t border-primary/10 flex items-center justify-between">
+                  <div className="pt-2 flex items-center justify-between">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Precio IAmax</span>
                       <div className="flex flex-col">

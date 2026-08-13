@@ -28,6 +28,7 @@ function Checkout() {
     customer_email: "",
     customer_phone: "",
     payment_method_id: "",
+    tx_id: "",
   });
 
   const orderMutation = useMutation({
@@ -49,6 +50,7 @@ function Checkout() {
     
     orderMutation.mutate({
       ...form,
+      tx_id: form.tx_id || undefined,
       total_usd: totalUsd,
       total_fiat: totalFiat,
       items: cart.items.map(i => ({
@@ -119,16 +121,40 @@ function Checkout() {
                 ) : (
                   <div className="grid gap-4">
                     {paymentMethods?.map((pm: any) => (
-                      <label key={pm.id} className={`relative flex cursor-pointer rounded-2xl border p-4 shadow-sm focus:outline-none transition-all ${form.payment_method_id === pm.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-white/10 bg-muted/20 hover:bg-muted/40'}`}>
-                        <input type="radio" name="payment_method" value={pm.id} className="sr-only" onChange={() => setForm({...form, payment_method_id: pm.id})} checked={form.payment_method_id === pm.id} />
-                        <span className="flex flex-1">
-                          <span className="flex flex-col">
-                            <span className="block text-sm font-bold text-white">{pm.name}</span>
-                            <span className="mt-1 flex items-center text-xs text-muted-foreground">{pm.type === 'crypto' ? 'Automático (Criptomonedas)' : 'Verificación Manual'}</span>
+                      <div key={pm.id} className={`relative rounded-2xl border transition-all ${form.payment_method_id === pm.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-white/10 bg-muted/20'}`}>
+                        <label className="flex cursor-pointer p-4 items-start focus:outline-none">
+                          <input type="radio" name="payment_method" value={pm.id} className="sr-only" onChange={() => setForm({...form, payment_method_id: pm.id})} checked={form.payment_method_id === pm.id} />
+                          <span className="flex flex-1">
+                            <span className="flex flex-col">
+                              <span className="block text-sm font-bold text-white">{pm.name}</span>
+                              <span className="mt-1 flex items-center text-xs text-muted-foreground">{pm.type === 'crypto' ? 'Automático (Criptomonedas)' : 'Verificación Manual'}</span>
+                            </span>
                           </span>
-                        </span>
-                        <CheckIcon className={`h-5 w-5 ${form.payment_method_id === pm.id ? 'text-primary' : 'invisible'}`} />
-                      </label>
+                          <CheckIcon className={`h-5 w-5 ${form.payment_method_id === pm.id ? 'text-primary' : 'invisible'}`} />
+                        </label>
+                        {form.payment_method_id === pm.id && storeData?.binancePayId && (pm.name.toLowerCase().includes('binance') || pm.type === 'crypto') && (
+                          <div className="px-4 pb-4 pt-0">
+                            <div className="p-4 bg-black/40 border border-white/5 rounded-xl space-y-4">
+                              <p className="text-sm text-slate-300">
+                                Envía <strong>${totalUsd.toFixed(2)} USDT</strong> mediante Binance Pay a este Pay ID:
+                              </p>
+                              <div className="flex gap-2">
+                                <code className="flex-1 bg-black px-3 py-2 rounded text-emerald-400 font-mono text-lg text-center">{storeData.binancePayId}</code>
+                              </div>
+                              <div className="space-y-2 pt-2">
+                                <span className="text-sm font-semibold text-muted-foreground">ID de Transacción (TX-ID) *</span>
+                                <input 
+                                  required 
+                                  className="w-full h-10 bg-muted/50 border border-white/10 rounded-lg px-3 text-sm focus:ring-1 focus:ring-primary" 
+                                  value={form.tx_id} 
+                                  onChange={e => setForm({...form, tx_id: e.target.value})} 
+                                  placeholder="Pegue aquí el TX-ID que le dio Binance" 
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}

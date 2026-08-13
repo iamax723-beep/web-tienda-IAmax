@@ -291,13 +291,14 @@ function ConfigTab() {
     queryFn: () => import("@/lib/products.functions").then(m => m.getAdminConfig()) 
   });
 
-  const [form, setForm] = useState({ telegram_bot_token: "", telegram_chat_id: "" });
+  const [form, setForm] = useState({ telegram_bot_token: "", telegram_chat_id: "", binance_pay_id: "" });
 
   useEffect(() => {
     if (config) {
       setForm({
         telegram_bot_token: config.telegram_bot_token || "",
-        telegram_chat_id: config.telegram_chat_id || ""
+        telegram_chat_id: config.telegram_chat_id || "",
+        binance_pay_id: config.binance_pay_id || ""
       });
     }
   }, [config]);
@@ -309,6 +310,12 @@ function ConfigTab() {
       queryClient.invalidateQueries({ queryKey: ["admin-config"] });
     },
     onError: () => toast.error("Error al guardar la configuración")
+  });
+
+  const webhookMutation = useMutation({
+    mutationFn: (url: string) => import("@/lib/products.functions").then(m => m.setupTelegramWebhook({ data: { url } })),
+    onSuccess: (res) => toast.success(res.message),
+    onError: (err: any) => toast.error(err.message || "Error al configurar webhook")
   });
 
   if (isLoading) return <div className="empty-state mt-7"><LoaderCircle className="animate-spin"/><p>Cargando configuración...</p></div>;
@@ -352,12 +359,49 @@ function ConfigTab() {
               <p className="text-xs text-slate-500 mt-1">Tu ID personal de Telegram. Puedes obtenerlo hablando con @userinfobot.</p>
             </div>
 
+            <div className="flex gap-4">
+              <button 
+                onClick={() => updateMutation.mutate()} 
+                disabled={updateMutation.isPending}
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-bold transition-colors disabled:opacity-50"
+              >
+                {updateMutation.isPending ? "Guardando..." : "Guardar Configuración"}
+              </button>
+              
+              <button 
+                onClick={() => webhookMutation.mutate(window.location.origin)} 
+                disabled={webhookMutation.isPending || !form.telegram_bot_token}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded font-bold transition-colors disabled:opacity-50"
+              >
+                {webhookMutation.isPending ? "Configurando Webhook..." : "Activar Webhook para Botones"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-black/20 p-6 rounded-xl border border-white/5">
+          <h3 className="text-lg font-bold text-white mb-2">Métodos de Pago Manuales</h3>
+          <p className="text-sm text-slate-400 mb-6">Configura tus cuentas para recibir pagos semiautomáticos.</p>
+          
+          <div className="space-y-4 max-w-xl">
+            <div>
+              <label className="block text-sm font-semibold text-slate-300 mb-1">Binance Pay ID</label>
+              <input 
+                type="text" 
+                value={form.binance_pay_id} 
+                onChange={e => setForm({...form, binance_pay_id: e.target.value})} 
+                placeholder="Ej. 123456789" 
+                className="w-full bg-black/40 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+              <p className="text-xs text-slate-500 mt-1">Tu ID de Pay de Binance para mostrar al cliente al realizar el checkout.</p>
+            </div>
+
             <button 
               onClick={() => updateMutation.mutate()} 
               disabled={updateMutation.isPending}
               className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-bold transition-colors disabled:opacity-50"
             >
-              {updateMutation.isPending ? "Guardando..." : "Guardar Configuración"}
+              {updateMutation.isPending ? "Guardando..." : "Guardar Binance ID"}
             </button>
           </div>
         </div>

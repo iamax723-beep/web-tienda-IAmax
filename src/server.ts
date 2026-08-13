@@ -50,6 +50,12 @@ export default {
       const url = new URL(request.url);
       console.log("!!! SERVER.TS FETCH:", request.method, url.pathname);
 
+      // --- WEBHOOK INTERCEPTOR ---
+      if (request.method === "POST" && url.pathname === "/api/webhook") {
+        const { handleTelegramWebhook } = await import("./lib/webhook.server");
+        return await handleTelegramWebhook(request);
+      }
+
       // --- LOGIN INTERCEPTOR ---
       if (request.method === "POST" && url.pathname === "/login") {
         let password = "";
