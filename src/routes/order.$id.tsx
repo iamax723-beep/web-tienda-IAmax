@@ -110,6 +110,13 @@ function OrderPage() {
               <div className="prose prose-sm prose-invert relative z-10 whitespace-pre-wrap text-muted-foreground">
                 {order.payment_instructions || "No hay instrucciones adicionales."}
               </div>
+              
+              {data.qrImageUrl && order.payment_method_type === 'manual' && isPending && (
+                <div className="mt-6 relative z-10 text-center">
+                  <p className="text-sm text-slate-300 font-semibold mb-3">Escanea este QR para pagar:</p>
+                  <img src={data.qrImageUrl} alt="QR de Pago" className="w-48 h-48 mx-auto rounded-xl border border-white/10 shadow-lg object-contain bg-white" />
+                </div>
+              )}
 
               {order.payment_method_type === 'crypto' && isPending && (
                 <div className="mt-8 relative z-10 p-6 bg-black/40 rounded-xl border border-white/10 text-center space-y-4">

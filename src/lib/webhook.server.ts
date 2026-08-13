@@ -28,7 +28,7 @@ export async function handleTelegramWebhook(request: Request): Promise<Response>
           }
 
           const items = await sql`
-            SELECT oi.*, p.store_id, p.provider_id 
+            SELECT oi.*, p.store_id, p.external_id as provider_id 
             FROM order_items oi 
             JOIN products p ON oi.product_id = p.id 
             WHERE oi.order_id = ${orderId}

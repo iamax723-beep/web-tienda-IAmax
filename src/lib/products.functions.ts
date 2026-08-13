@@ -77,17 +77,19 @@ export const listApiConnections = createServerFn({ method: "GET" }).handler(asyn
 export const getStorefrontData = createServerFn({ method: "GET" }).handler(async () => {
   const { getDb } = await import("@/lib/db.server");
   const sql = getDb();
-  const [products, rateRows, marginRows, binancePayIdRows] = await Promise.all([
+  const [products, rateRows, marginRows, binancePayIdRows, qrImageRows] = await Promise.all([
     sql`SELECT p.*, json_build_object('name', s.name) AS stores FROM products p LEFT JOIN stores s ON s.id = p.store_id ORDER BY p.created_at DESC`,
     sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'dollar_rate' LIMIT 1`,
     sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'profit_margin' LIMIT 1`,
     sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'binance_pay_id' LIMIT 1`,
+    sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'qr_image_url' LIMIT 1`,
   ]);
   return { 
     products, 
     dollarRate: Number(rateRows[0]?.value ?? 1),
     profitMargin: Number(marginRows[0]?.value ?? 0),
-    binancePayId: binancePayIdRows[0]?.value ?? null
+    binancePayId: binancePayIdRows[0]?.value ?? null,
+    qrImageUrl: qrImageRows[0]?.value ?? null
   };
 });
 
@@ -195,14 +197,14 @@ export const getAdminConfig = createServerFn({ method: "GET" }).handler(async ()
   const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
   const { getDb } = await import("@/lib/db.server");
   const sql = getDb();
-  const rows = await sql<{ key: string, value: string }[]>`SELECT key, value FROM settings WHERE key IN ('telegram_bot_token', 'telegram_chat_id', 'binance_pay_id')`;
+  const rows = await sql<{ key: string, value: string }[]>`SELECT key, value FROM settings WHERE key IN ('telegram_bot_token', 'telegram_chat_id', 'binance_pay_id', 'qr_image_url')`;
   const config: Record<string, string> = {};
   for (const row of rows) config[row.key] = row.value;
   return config;
 });
 
 export const updateAdminConfig = createServerFn({ method: "POST" }).validator((data) => z.object({ 
-  telegram_bot_token: z.string().optional(), telegram_chat_id: z.string().optional(), binance_pay_id: z.string().optional()
+  telegram_bot_token: z.string().optional(), telegram_chat_id: z.string().optional(), binance_pay_id: z.string().optional(), qr_image_url: z.string().optional()
 }).parse(data)).handler(async ({ data }) => {
   const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
   const { getDb } = await import("@/lib/db.server");
@@ -215,6 +217,9 @@ export const updateAdminConfig = createServerFn({ method: "POST" }).validator((d
   }
   if (data.binance_pay_id !== undefined) {
     await sql`INSERT INTO settings (key,value,updated_at) VALUES ('binance_pay_id',${data.binance_pay_id},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+  }
+  if (data.qr_image_url !== undefined) {
+    await sql`INSERT INTO settings (key,value,updated_at) VALUES ('qr_image_url',${data.qr_image_url},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
   }
   return { success: true };
 });

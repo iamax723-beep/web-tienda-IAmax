@@ -100,7 +100,11 @@ function Admin() {
 
   const marginMutation = useMutation({
     mutationFn: () => import("@/lib/products.functions").then(m => m.updateProfitMargin({ data: { margin: Number(margin) } })),
-    onSuccess: () => { toast.success("Margen de ganancia actualizado"); setMargin(""); },
+    onSuccess: () => { 
+      toast.success("Margen de ganancia actualizado"); 
+      setMargin(""); 
+      queryClient.invalidateQueries(); 
+    },
     onError: () => toast.error("Ingresa un porcentaje válido"),
   });
 
@@ -203,7 +207,8 @@ function InventoryTab() {
   const { data: products, isLoading } = useQuery({ queryKey: ["admin-products"], queryFn: () => import("@/lib/products.functions").then(m => m.listAdminProducts()) });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ custom_usd_price: "", custom_image_url: "", warranty_days: "" });
-  const queryClient = useQueryClient();
+  const { data: config } = useQuery({ queryKey: ["admin-config"], queryFn: () => import("@/lib/products.functions").then(m => m.getAdminConfig()) });
+  const profitMargin = Number(config?.profit_margin || 0);
 
   const updateMutation = useMutation({
     mutationFn: (data: any) => import("@/lib/products.functions").then(m => m.updateProductDetails({ data })),
@@ -232,7 +237,7 @@ function InventoryTab() {
                   </td>
                   <td className="p-3">${p.original_price}</td>
                   <td className="p-3">
-                    {isEditing ? <input className="compact-input w-24" type="number" step="0.01" value={editForm.custom_usd_price} onChange={e => setEditForm(prev => ({...prev, custom_usd_price: e.target.value}))} placeholder={p.original_price}/> : <span className={p.custom_usd_price ? "text-green-400 font-bold" : "text-slate-400"}>{p.custom_usd_price ? `$${p.custom_usd_price}` : "Sin fijar"}</span>}
+                    {isEditing ? <input className="compact-input w-24" type="number" step="0.01" value={editForm.custom_usd_price} onChange={e => setEditForm(prev => ({...prev, custom_usd_price: e.target.value}))} placeholder={p.original_price}/> : <span className={p.custom_usd_price ? "text-green-400 font-bold" : "text-slate-400"}>{p.custom_usd_price ? `$${p.custom_usd_price}` : `$${(p.original_price * (1 + profitMargin / 100)).toFixed(2)} (Margen)`}</span>}
                   </td>
                   <td className="p-3">
                     {isEditing ? <input className="compact-input w-48" type="url" value={editForm.custom_image_url} onChange={e => setEditForm(prev => ({...prev, custom_image_url: e.target.value}))} placeholder="https://..."/> : <div className="max-w-[150px] truncate text-slate-400">{p.custom_image_url || "Sin fijar"}</div>}
@@ -291,14 +296,15 @@ function ConfigTab() {
     queryFn: () => import("@/lib/products.functions").then(m => m.getAdminConfig()) 
   });
 
-  const [form, setForm] = useState({ telegram_bot_token: "", telegram_chat_id: "", binance_pay_id: "" });
+  const [form, setForm] = useState({ telegram_bot_token: "", telegram_chat_id: "", binance_pay_id: "", qr_image_url: "" });
 
   useEffect(() => {
     if (config) {
       setForm({
         telegram_bot_token: config.telegram_bot_token || "",
-        telegram_chat_id: config.telegram_chat_id || "",
-        binance_pay_id: config.binance_pay_id || ""
+        telegram_chat_id: config?.telegram_chat_id || "",
+        binance_pay_id: config?.binance_pay_id || "",
+        qr_image_url: config?.qr_image_url || "",
       });
     }
   }, [config]);
@@ -394,6 +400,18 @@ function ConfigTab() {
                 className="w-full bg-black/40 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
               />
               <p className="text-xs text-slate-500 mt-1">Tu ID de Pay de Binance para mostrar al cliente al realizar el checkout.</p>
+            </div>
+            
+            <div className="pt-2 border-t border-white/5">
+              <label className="block text-sm font-semibold text-slate-300 mb-1">Imagen QR para Transferencias (URL)</label>
+              <input 
+                type="url" 
+                value={form.qr_image_url} 
+                onChange={e => setForm({...form, qr_image_url: e.target.value})} 
+                placeholder="https://... (URL de la imagen de tu QR)" 
+                className="w-full bg-black/40 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+              <p className="text-xs text-slate-500 mt-1">Si configuras esto, se mostrará esta imagen cuando un cliente elija pago por QR.</p>
             </div>
 
             <button 

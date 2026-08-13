@@ -108,7 +108,11 @@ export const getOrder = createServerFn({ method: "GET" })
     if (!order) throw new Error("Orden no encontrada");
 
     const items = await sql`SELECT * FROM order_items WHERE order_id = ${data.orderId}`;
-    return { order, items };
+    
+    const qrImageRows = await sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'qr_image_url' LIMIT 1`;
+    const qrImageUrl = qrImageRows[0]?.value ?? null;
+
+    return { order, items, qrImageUrl };
   });
 
 export const submitPaymentProof = createServerFn({ method: "POST" })
@@ -120,8 +124,39 @@ export const submitPaymentProof = createServerFn({ method: "POST" })
     const { getDb } = await import("@/lib/db.server");
     const sql = getDb();
     
-    const [order] = await sql`UPDATE orders SET payment_proof_url = ${data.proof_url}, status = 'processing' WHERE id = ${data.orderId} RETURNING id`;
+    const [order] = await sql`UPDATE orders SET payment_proof_url = ${data.proof_url}, status = 'processing' WHERE id = ${data.orderId} RETURNING id, customer_name, total_usd`;
     if (!order) throw new Error("Orden no encontrada");
+
+    try {
+      const rows = await sql<{ key: string, value: string }[]>`SELECT key, value FROM settings WHERE key IN ('telegram_bot_token', 'telegram_chat_id')`;
+      const config: Record<string, string> = {};
+      for (const row of rows) config[row.key] = row.value;
+
+      if (config.telegram_bot_token && config.telegram_chat_id) {
+        const message = `🧾 *Comprobante Recibido*\\n\\n` +
+          `*Cliente:* ${order.customer_name}\\n` +
+          `*Total:* $${order.total_usd} USD\\n` +
+          `*Comprobante:* [Ver Imagen](${data.proof_url})\\n\\n` +
+          `Por favor, verifica el pago en tu panel de administración.`;
+
+        await fetch(`https://api.telegram.org/bot${config.telegram_bot_token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: config.telegram_chat_id,
+            text: message,
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "✅ Aprobar y Entregar", callback_data: `approve_${order.id}` }]
+              ]
+            }
+          })
+        }).catch(e => console.error("Error enviando comprobante a telegram:", e));
+      }
+    } catch (e) {
+      console.error("Error al notificar comprobante:", e);
+    }
     
     return { success: true };
   });
@@ -152,7 +187,7 @@ export const approveOrder = createServerFn({ method: "POST" })
     if (order.status === 'delivered') throw new Error("La orden ya fue entregada");
 
     const items = await sql`
-      SELECT oi.*, p.store_id, p.provider_id 
+      SELECT oi.*, p.store_id, p.external_id as provider_id 
       FROM order_items oi 
       JOIN products p ON oi.product_id = p.id 
       WHERE oi.order_id = ${data.orderId}
