@@ -48,41 +48,45 @@ function Index() {
   const currentRate = data?.dollarRate ?? 1;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-hidden text-foreground">
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-primary/20 blur-[120px] mix-blend-screen animate-pulse" />
+        <div className="absolute top-[20%] right-[10%] w-[30%] h-[50%] rounded-full bg-secondary/20 blur-[140px] mix-blend-screen animate-pulse" style={{ animationDelay: '2s', animationDuration: '8s' }} />
+        <div className="absolute -bottom-[20%] left-[20%] w-[50%] h-[40%] rounded-full bg-blue-500/10 blur-[130px] mix-blend-screen animate-pulse" style={{ animationDelay: '4s', animationDuration: '10s' }} />
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03]" />
+      </div>
+
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-linear-to-br from-primary via-secondary to-background pt-24 pb-32">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
+      <div className="relative pt-24 pb-32">
         <div className="container mx-auto px-6 relative z-10">
           <div className="flex justify-between items-center">
             <div className="space-y-6 animate-in fade-in slide-in-from-top duration-1000">
-              <div className="inline-block px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full border border-white/30 mb-4">
-                <span className="text-white text-xs font-bold uppercase tracking-[0.3em]">Bienvenido a la Nueva Era</span>
+              <div className="inline-block px-4 py-1.5 bg-primary/10 backdrop-blur-md rounded-full border border-primary/20 mb-4 shadow-[0_0_15px_rgba(var(--color-primary),0.2)]">
+                <span className="text-primary text-xs font-bold uppercase tracking-[0.3em]">Bienvenido a la Nueva Era</span>
               </div>
-              <h1 className="text-7xl font-black text-white tracking-tighter sm:text-9xl drop-shadow-2xl">
+              <h1 className="text-7xl font-black tracking-tighter sm:text-9xl drop-shadow-2xl bg-clip-text text-transparent bg-linear-to-r from-foreground via-primary to-secondary">
                 IAmax
               </h1>
-              <p className="text-2xl text-white/90 max-w-xl font-semibold leading-relaxed drop-shadow-md">
+              <p className="text-2xl text-muted-foreground max-w-xl font-medium leading-relaxed drop-shadow-md">
                 Tecnología de vanguardia y precios sincronizados al instante.
               </p>
             </div>
-            <Button variant="ghost" size="icon" asChild className="rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl transition-all duration-300 group" title="Administración">
+            <Button variant="ghost" size="icon" asChild className="rounded-full bg-card/40 hover:bg-card/80 border border-white/5 backdrop-blur-xl transition-all duration-300 group hover:scale-110 shadow-lg" title="Administración">
               <a href="/admin">
-                <Settings className="w-6 h-6 text-white group-hover:rotate-90 transition-transform duration-500" />
+                <Settings className="w-6 h-6 text-foreground group-hover:rotate-90 transition-transform duration-500" />
               </a>
             </Button>
           </div>
         </div>
-        
-        {/* Decorative elements */}
-        <div className="absolute -top-24 -right-24 w-[500px] h-[500px] bg-primary/30 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute -bottom-24 -left-24 w-[500px] h-[500px] bg-secondary/30 rounded-full blur-[120px] animate-pulse" />
       </div>
 
       <div className="container mx-auto px-6 -mt-12 relative z-20 space-y-12 pb-24">
         {/* Exchange Rate Card */}
-        <Card className="border-none shadow-[0_20px_50px_rgba(0,0,0,0.1)] shadow-primary/10 bg-card/95 backdrop-blur-2xl overflow-hidden group ring-1 ring-primary/5">
-          <CardContent className="p-10">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+        <Card className="border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.2)] bg-card/60 backdrop-blur-3xl overflow-hidden group hover:border-primary/30 transition-all duration-700">
+          <CardContent className="p-10 relative">
+            <div className="absolute inset-0 bg-linear-to-r from-primary/5 via-transparent to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left relative z-10">
               <div className="space-y-2">
                 <div className="flex items-center gap-2 justify-center md:justify-start">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
