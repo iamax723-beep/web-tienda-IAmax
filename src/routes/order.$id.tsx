@@ -111,8 +111,14 @@ function OrderPage() {
                 <div className="flex justify-between items-end">
                   <span className="text-muted-foreground font-medium">Total Pagado:</span>
                   <div className="text-right">
-                    <span className="block text-3xl font-black text-primary">${order.total_fiat}</span>
-                    <span className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">${order.total_usd} USD</span>
+                    {order.total_fiat !== order.total_usd ? (
+                      <>
+                        <span className="block text-3xl font-black text-primary">Bs. {order.total_fiat}</span>
+                        <span className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">${order.total_usd} USD</span>
+                      </>
+                    ) : (
+                      <span className="block text-3xl font-black text-primary">${order.total_usd} USD</span>
+                    )}
                   </div>
                 </div>
               </div>
