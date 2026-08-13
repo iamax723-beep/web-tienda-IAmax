@@ -207,8 +207,15 @@ function InventoryTab() {
   const { data: products, isLoading } = useQuery({ queryKey: ["admin-products"], queryFn: () => import("@/lib/products.functions").then(m => m.listAdminProducts()) });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ custom_usd_price: "", custom_image_url: "", warranty_days: "", provider_name: "none", provider_product_id: "", provider_variant_id: "" });
+  const [search, setSearch] = useState("");
   const { data: config } = useQuery({ queryKey: ["admin-config"], queryFn: () => import("@/lib/products.functions").then(m => m.getAdminConfig()) });
   const profitMargin = Number(config?.profit_margin || 0);
+
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    if (!search) return products;
+    return products.filter((p: any) => p.name.toLowerCase().includes(search.toLowerCase()));
+  }, [products, search]);
 
   const updateMutation = useMutation({
     mutationFn: (data: any) => import("@/lib/products.functions").then(m => m.updateProductDetails({ data })),
@@ -220,12 +227,15 @@ function InventoryTab() {
 
   return (
     <section className="panel mt-7">
-      <div className="panel-heading"><div><h2>Inventario Sincronizado</h2><p>Fija tus propios precios (en USD), URLs de imágenes y garantía.</p></div></div>
+      <div className="panel-heading">
+        <div><h2>Inventario Sincronizado</h2><p>Fija tus propios precios (en USD), URLs de imágenes y garantía.</p></div>
+        <div className="search-box"><Search size={17}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar producto..." /></div>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm mt-4">
           <thead><tr className="border-b border-white/10 text-slate-400"><th className="p-3">Producto</th><th className="p-3">API Automática</th><th className="p-3">Stock</th><th className="p-3">Garantía</th><th className="p-3">Precio Base</th><th className="p-3">Tu Precio (USD)</th><th className="p-3">Imagen (URL)</th><th className="p-3">Acciones</th></tr></thead>
           <tbody>
-            {products?.map((p: any) => {
+            {filteredProducts.map((p: any) => {
               const isEditing = editingId === p.id;
               return (
                 <tr key={p.id} className="border-b border-white/5 hover:bg-white/5">
