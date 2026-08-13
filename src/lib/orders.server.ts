@@ -295,6 +295,11 @@ export const verifyBinancePayment = createServerFn({ method: "POST" })
     }
 
     const amountReceived = parseFloat(tx.amount);
+    
+    if (amountReceived < 0) {
+      throw new Error(`Este TX-ID corresponde a un pago que tú ENVIASTE (salida de fondos). Debes ingresar el TX-ID de un pago RECIBIDO.`);
+    }
+
     if (amountReceived < order.total_usd) {
       throw new Error(`Monto insuficiente. Se recibió ${amountReceived} USDT, pero el pedido requiere ${order.total_usd} USDT.`);
     }
