@@ -195,7 +195,7 @@ export const syncBinanceRate = createServerFn({ method: "POST" }).handler(async 
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      fiat: 'BOB', page: 1, rows: 5, tradeType: 'SELL', asset: 'USDT',
+      fiat: 'BOB', page: 1, rows: 5, tradeType: 'BUY', asset: 'USDT',
       countries: [], proMerchantAds: false, shieldMerchantAds: false,
       filterType: 'all', periods: [], additionalKycVerifyFilter: 0,
       publisherType: null, payTypes: [], classifies: ['mass', 'profession']
