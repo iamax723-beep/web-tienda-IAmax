@@ -77,9 +77,37 @@ export const listApiConnections = createServerFn({ method: "GET" }).handler(asyn
 export const getStorefrontData = createServerFn({ method: "GET" }).handler(async () => {
   const { getDb } = await import("@/lib/db.server");
   const sql = getDb();
-  const [products, rateRows, marginRows, binancePayIdRows, qrImageRows] = await Promise.all([
+  let rateRows = await sql<{ value: string, updated_at: string }[]>`SELECT value, updated_at FROM settings WHERE key = 'dollar_rate' LIMIT 1`;
+  
+  // Auto-update Binance rate if older than 1 hour (3600000 ms)
+  const lastUpdated = rateRows[0]?.updated_at ? new Date(rateRows[0].updated_at).getTime() : 0;
+  if (Date.now() - lastUpdated > 3600000) {
+    try {
+      const response = await fetch('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fiat: 'BOB', page: 1, rows: 5, tradeType: 'SELL', asset: 'USDT',
+          countries: [], proMerchantAds: false, shieldMerchantAds: false,
+          filterType: 'all', periods: [], additionalKycVerifyFilter: 0,
+          publisherType: null, payTypes: [], classifies: ['mass', 'profession']
+        })
+      });
+      const result = await response.json();
+      if (result.code === '000000' && result.data && result.data.length > 0) {
+        const price = Number(result.data[0].adv.price);
+        if (!isNaN(price) && price > 0) {
+          await sql`INSERT INTO settings (key,value,updated_at) VALUES ('dollar_rate',${price.toString()},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+          rateRows = [{ value: price.toString(), updated_at: new Date().toISOString() }];
+        }
+      }
+    } catch (e) {
+      console.error("Auto-sync Binance rate failed:", e);
+    }
+  }
+
+  const [products, marginRows, binancePayIdRows, qrImageRows] = await Promise.all([
     sql`SELECT p.*, json_build_object('name', s.name) AS stores FROM products p LEFT JOIN stores s ON s.id = p.store_id ORDER BY p.created_at DESC`,
-    sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'dollar_rate' LIMIT 1`,
     sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'profit_margin' LIMIT 1`,
     sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'binance_pay_id' LIMIT 1`,
     sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'qr_image_url' LIMIT 1`,
@@ -197,14 +225,15 @@ export const getAdminConfig = createServerFn({ method: "GET" }).handler(async ()
   const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
   const { getDb } = await import("@/lib/db.server");
   const sql = getDb();
-  const rows = await sql<{ key: string, value: string }[]>`SELECT key, value FROM settings WHERE key IN ('telegram_bot_token', 'telegram_chat_id', 'binance_pay_id', 'qr_image_url')`;
+  const rows = await sql<{ key: string, value: string }[]>`SELECT key, value FROM settings WHERE key IN ('telegram_bot_token', 'telegram_chat_id', 'binance_pay_id', 'qr_image_url', 'binance_api_key', 'binance_secret_key')`;
   const config: Record<string, string> = {};
   for (const row of rows) config[row.key] = row.value;
   return config;
 });
 
 export const updateAdminConfig = createServerFn({ method: "POST" }).validator((data) => z.object({ 
-  telegram_bot_token: z.string().optional(), telegram_chat_id: z.string().optional(), binance_pay_id: z.string().optional(), qr_image_url: z.string().optional()
+  telegram_bot_token: z.string().optional(), telegram_chat_id: z.string().optional(), binance_pay_id: z.string().optional(), qr_image_url: z.string().optional(),
+  binance_api_key: z.string().optional(), binance_secret_key: z.string().optional()
 }).parse(data)).handler(async ({ data }) => {
   const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
   const { getDb } = await import("@/lib/db.server");
@@ -220,6 +249,12 @@ export const updateAdminConfig = createServerFn({ method: "POST" }).validator((d
   }
   if (data.qr_image_url !== undefined) {
     await sql`INSERT INTO settings (key,value,updated_at) VALUES ('qr_image_url',${data.qr_image_url},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+  }
+  if (data.binance_api_key !== undefined) {
+    await sql`INSERT INTO settings (key,value,updated_at) VALUES ('binance_api_key',${data.binance_api_key},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+  }
+  if (data.binance_secret_key !== undefined) {
+    await sql`INSERT INTO settings (key,value,updated_at) VALUES ('binance_secret_key',${data.binance_secret_key},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
   }
   return { success: true };
 });

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getOrder, submitPaymentProof } from "@/lib/orders.server";
-import { useState } from "react";
+import { getOrder, submitPaymentProof, verifyBinancePayment } from "@/lib/orders.server";
+import { useState, useEffect } from "react";
 import { ArrowLeft, CheckCircle2, Clock, Copy, LoaderCircle, Upload, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -30,6 +30,24 @@ function OrderPage() {
     },
     onError: (err: any) => toast.error(err.message || "Error al enviar"),
   });
+
+  const verifyMutation = useMutation({
+    mutationFn: () => verifyBinancePayment({ data: { orderId: id } }),
+    onSuccess: () => {
+      toast.success("¡Pago verificado exitosamente!");
+      queryClient.invalidateQueries({ queryKey: ["order", id] });
+    },
+    onError: (err: any) => toast.error(err.message || "No se pudo verificar el pago"),
+  });
+
+  // Intentar verificar automáticamente la primera vez si es crypto
+  useEffect(() => {
+    if (data?.order?.payment_method_type === 'crypto' && data?.order?.status === 'pending' && data?.order?.tx_id) {
+      if (!verifyMutation.isPending && !verifyMutation.isSuccess) {
+        verifyMutation.mutate();
+      }
+    }
+  }, [data?.order?.status, data?.order?.payment_method_type]);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><LoaderCircle className="animate-spin w-12 h-12 text-primary" /></div>;
   if (error || !data) return <div className="min-h-screen flex items-center justify-center flex-col gap-4 text-red-400"><p>Orden no encontrada</p><a href="/" className="underline">Volver a la tienda</a></div>;
@@ -118,10 +136,19 @@ function OrderPage() {
                 </div>
               )}
 
-              {order.payment_method_type === 'crypto' && isPending && (
+              {order.payment_method_type === 'crypto' && (isPending || isProcessing) && (
                 <div className="mt-8 relative z-10 p-6 bg-black/40 rounded-xl border border-white/10 text-center space-y-4">
-                  <p className="font-bold text-white">Próximamente integración directa con Binance Pay API.</p>
-                  <p className="text-sm text-muted-foreground">Por ahora, este método requiere integración en la Fase 4.</p>
+                  <p className="font-bold text-white">Verificación Automática con Binance</p>
+                  <p className="text-sm text-muted-foreground">Estamos verificando tu pago con el TX-ID: <strong className="text-white">{order.tx_id}</strong></p>
+                  
+                  <Button 
+                    onClick={() => verifyMutation.mutate()} 
+                    disabled={verifyMutation.isPending} 
+                    className="h-12 w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold"
+                  >
+                    {verifyMutation.isPending ? <LoaderCircle className="animate-spin w-5 h-5 mr-2" /> : null}
+                    {verifyMutation.isPending ? "Verificando en Binance..." : "Reintentar Verificación"}
+                  </Button>
                 </div>
               )}
 

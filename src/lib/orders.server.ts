@@ -1,5 +1,66 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import crypto from 'node:crypto';
+
+async function executeOrderDelivery(orderId: string, sql: any) {
+  // 1. Obtener la orden y verificar que no esté ya entregada
+  const [order] = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
+  if (!order) throw new Error("Orden no encontrada");
+  if (order.status === 'delivered') throw new Error("La orden ya fue entregada");
+
+  const items = await sql`
+    SELECT oi.*, p.store_id, p.external_id as provider_id 
+    FROM order_items oi 
+    JOIN products p ON oi.product_id = p.id 
+    WHERE oi.order_id = ${orderId}
+  `;
+  if (items.length === 0) throw new Error("La orden no tiene productos");
+
+  // 2. Por cada item, hacer la compra en la API del proveedor
+  let allKeys: string[] = [];
+  
+  for (const item of items) {
+    if (!item.store_id || !item.provider_id) throw new Error(`El producto ${item.product_name} no tiene proveedor o ID configurado`);
+    
+    const [store] = await sql`SELECT * FROM stores WHERE id = ${item.store_id}`;
+    if (!store || !store.api_key) throw new Error(`No se encontró la API Key para el proveedor del producto ${item.product_name}`);
+
+    const purchaseUrl = store.purchase_url || `${store.api_url.split('/v1')[0]}/v1/orders`;
+    
+    try {
+      const response = await fetch(purchaseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": store.api_key,
+          ...(store.auth_header && store.auth_type === 'header' ? { [store.auth_header]: store.api_key } : {})
+        },
+        body: JSON.stringify({
+          product_id: item.provider_id,
+          category_id: !isNaN(Number(item.provider_id)) ? Number(item.provider_id) : item.provider_id,
+          quantity: item.quantity
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error("Error from API:", result);
+        throw new Error(result.error?.message || result.error || result.message || "Error al comprar el producto");
+      }
+
+      const keys = result.credentials || result.data?.keys || result.keys || [];
+      allKeys.push(...keys.map((k: string) => `${item.product_name}: ${k}`));
+
+    } catch (err: any) {
+      throw new Error(`Fallo al comprar ${item.product_name}: ${err.message}`);
+    }
+  }
+
+  // 3. Guardar las keys en la orden y marcar como entregado
+  const keysText = allKeys.join("\\n");
+  await sql`UPDATE orders SET status = 'delivered', provider_order_id = ${keysText} WHERE id = ${orderId}`;
+}
 
 export const getPaymentMethods = createServerFn({ method: "GET" }).handler(async () => {
   const { getDb } = await import("@/lib/db.server");
@@ -135,16 +196,16 @@ export const submitPaymentProof = createServerFn({ method: "POST" })
       if (config.telegram_bot_token && config.telegram_chat_id) {
         const message = `🧾 *Comprobante Recibido*\\n\\n` +
           `*Cliente:* ${order.customer_name}\\n` +
-          `*Total:* $${order.total_usd} USD\\n` +
-          `*Comprobante:* [Ver Imagen](${data.proof_url})\\n\\n` +
+          `*Total:* $${order.total_usd} USD\\n\\n` +
           `Por favor, verifica el pago en tu panel de administración.`;
 
-        await fetch(`https://api.telegram.org/bot${config.telegram_bot_token}/sendMessage`, {
+        await fetch(`https://api.telegram.org/bot${config.telegram_bot_token}/sendPhoto`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: config.telegram_chat_id,
-            text: message,
+            photo: data.proof_url,
+            caption: message,
             parse_mode: 'Markdown',
             reply_markup: {
               inline_keyboard: [
@@ -181,63 +242,65 @@ export const approveOrder = createServerFn({ method: "POST" })
     const { getDb } = await import("@/lib/db.server");
     const sql = getDb();
 
-    // 1. Obtener la orden y verificar que no esté ya entregada
+    await executeOrderDelivery(data.orderId, sql);
+    return { success: true };
+  });
+
+export const verifyBinancePayment = createServerFn({ method: "POST" })
+  .validator((data) => z.object({ orderId: z.string().uuid() }).parse(data))
+  .handler(async ({ data }) => {
+    const { getDb } = await import("@/lib/db.server");
+    const sql = getDb();
+    
     const [order] = await sql`SELECT * FROM orders WHERE id = ${data.orderId}`;
     if (!order) throw new Error("Orden no encontrada");
-    if (order.status === 'delivered') throw new Error("La orden ya fue entregada");
+    if (!order.tx_id) throw new Error("La orden no tiene un TX-ID asociado");
+    if (order.status === 'delivered') return { success: true, message: "Ya entregada" };
 
-    const items = await sql`
-      SELECT oi.*, p.store_id, p.external_id as provider_id 
-      FROM order_items oi 
-      JOIN products p ON oi.product_id = p.id 
-      WHERE oi.order_id = ${data.orderId}
-    `;
-    if (items.length === 0) throw new Error("La orden no tiene productos");
+    const rows = await sql<{ key: string, value: string }[]>`SELECT key, value FROM settings WHERE key IN ('binance_api_key', 'binance_secret_key')`;
+    const config: Record<string, string> = {};
+    for (const row of rows) config[row.key] = row.value;
 
-    // 2. Por cada item, hacer la compra en la API del proveedor
-    let allKeys: string[] = [];
-    
-    for (const item of items) {
-      if (!item.store_id || !item.provider_id) throw new Error(`El producto ${item.product_name} no tiene proveedor o ID configurado`);
-      
-      const [store] = await sql`SELECT * FROM stores WHERE id = ${item.store_id}`;
-      if (!store || !store.api_key) throw new Error(`No se encontró la API Key para el proveedor del producto ${item.product_name}`);
-
-      const purchaseUrl = store.purchase_url || `${store.api_url.split('/v1')[0]}/v1/orders`;
-      
-      try {
-        const response = await fetch(purchaseUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-Key": store.api_key,
-            ...(store.auth_header && store.auth_type === 'header' ? { [store.auth_header]: store.api_key } : {})
-          },
-          body: JSON.stringify({
-            product_id: item.provider_id,
-            category_id: !isNaN(Number(item.provider_id)) ? Number(item.provider_id) : item.provider_id,
-            quantity: item.quantity
-          })
-        });
-
-        const result = await response.json();
-        
-        if (!response.ok) {
-          console.error("Error from API:", result);
-          throw new Error(result.error?.message || result.error || result.message || "Error al comprar el producto");
-        }
-
-        const keys = result.credentials || result.data?.keys || result.keys || [];
-        allKeys.push(...keys.map((k: string) => `${item.product_name}: ${k}`));
-
-      } catch (err: any) {
-        throw new Error(`Fallo al comprar ${item.product_name}: ${err.message}`);
-      }
+    if (!config.binance_api_key || !config.binance_secret_key) {
+      throw new Error("Las credenciales de Binance API no están configuradas en el administrador.");
     }
 
-    // 3. Guardar las keys en la orden y marcar como entregado
-    const keysText = allKeys.join("\\n");
-    await sql`UPDATE orders SET status = 'delivered', provider_order_id = ${keysText} WHERE id = ${data.orderId}`;
+    const timestamp = Date.now();
+    const queryString = `timestamp=${timestamp}&limit=100`;
+    const signature = crypto.createHmac('sha256', config.binance_secret_key).update(queryString).digest('hex');
+
+    const url = `https://api.binance.com/sapi/v1/pay/transactions?${queryString}&signature=${signature}`;
+    
+    const res = await fetch(url, {
+      headers: {
+        'X-MBX-APIKEY': config.binance_api_key
+      }
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.code !== "000000") {
+      throw new Error(`Error en API de Binance: ${json.msg || res.statusText}`);
+    }
+
+    const transactions = json.data || [];
+    
+    const tx = transactions.find((t: any) => t.transactionId === order.tx_id || t.orderId === order.tx_id);
+    
+    if (!tx) {
+      throw new Error("No se encontró el pago en tu historial reciente de Binance Pay. Verifica que el TX-ID sea correcto o intenta de nuevo en unos minutos.");
+    }
+    
+    if (tx.currency !== "USDT") {
+      throw new Error(`La moneda recibida es ${tx.currency}, se esperaba USDT.`);
+    }
+
+    const amountReceived = parseFloat(tx.amount);
+    if (amountReceived < order.total_usd) {
+      throw new Error(`Monto insuficiente. Se recibió ${amountReceived} USDT, pero el pedido requiere ${order.total_usd} USDT.`);
+    }
+
+    // Pago verificado, ejecutamos la entrega
+    await executeOrderDelivery(data.orderId, sql);
 
     return { success: true };
   });

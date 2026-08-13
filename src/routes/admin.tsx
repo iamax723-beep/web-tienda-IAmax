@@ -296,7 +296,7 @@ function ConfigTab() {
     queryFn: () => import("@/lib/products.functions").then(m => m.getAdminConfig()) 
   });
 
-  const [form, setForm] = useState({ telegram_bot_token: "", telegram_chat_id: "", binance_pay_id: "", qr_image_url: "" });
+  const [form, setForm] = useState({ telegram_bot_token: "", telegram_chat_id: "", binance_pay_id: "", qr_image_url: "", binance_api_key: "", binance_secret_key: "" });
 
   useEffect(() => {
     if (config) {
@@ -305,6 +305,8 @@ function ConfigTab() {
         telegram_chat_id: config?.telegram_chat_id || "",
         binance_pay_id: config?.binance_pay_id || "",
         qr_image_url: config?.qr_image_url || "",
+        binance_api_key: config?.binance_api_key || "",
+        binance_secret_key: config?.binance_secret_key || "",
       });
     }
   }, [config]);
@@ -414,12 +416,40 @@ function ConfigTab() {
               <p className="text-xs text-slate-500 mt-1">Si configuras esto, se mostrará esta imagen cuando un cliente elija pago por QR.</p>
             </div>
 
+            <div className="pt-2 border-t border-white/5">
+              <h4 className="text-sm font-bold text-white mb-2">Automatización de Pagos (Binance API)</h4>
+              <p className="text-xs text-slate-400 mb-4">Ingresa una API Key con permiso <strong>"Enable Reading"</strong> para verificar pagos automáticamente. ¡No habilites permisos de trading ni retiros!</p>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Binance API Key</label>
+                  <input 
+                    type="password" 
+                    value={form.binance_api_key} 
+                    onChange={e => setForm({...form, binance_api_key: e.target.value})} 
+                    placeholder="Tu API Key" 
+                    className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Binance Secret Key</label>
+                  <input 
+                    type="password" 
+                    value={form.binance_secret_key} 
+                    onChange={e => setForm({...form, binance_secret_key: e.target.value})} 
+                    placeholder="Tu Secret Key" 
+                    className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  />
+                </div>
+              </div>
+            </div>
+
             <button 
               onClick={() => updateMutation.mutate()} 
               disabled={updateMutation.isPending}
               className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-bold transition-colors disabled:opacity-50"
             >
-              {updateMutation.isPending ? "Guardando..." : "Guardar Binance ID"}
+              {updateMutation.isPending ? "Guardando..." : "Guardar Configuración"}
             </button>
           </div>
         </div>
