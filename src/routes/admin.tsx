@@ -46,10 +46,11 @@ function Admin() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
-  const [showInventory, setShowInventory] = useState(false);
+  const [activeTab, setActiveTab] = useState<"connections" | "inventory" | "orders">("connections");
   const [showKey, setShowKey] = useState(false);
   const [search, setSearch] = useState("");
   const [rate, setRate] = useState("");
+  const [margin, setMargin] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const { isAuth } = Route.useRouteContext();
 
@@ -97,6 +98,21 @@ function Admin() {
     onError: () => toast.error("Ingresa una tasa válida"),
   });
 
+  const marginMutation = useMutation({
+    mutationFn: () => import("@/lib/products.functions").then(m => m.updateProfitMargin({ data: { margin: Number(margin) } })),
+    onSuccess: () => { toast.success("Margen de ganancia actualizado"); setMargin(""); },
+    onError: () => toast.error("Ingresa un porcentaje válido"),
+  });
+
+  const binanceMutation = useMutation({
+    mutationFn: () => import("@/lib/products.functions").then(m => m.syncBinanceRate()),
+    onSuccess: (res) => { 
+      toast.success(`Tipo de cambio actualizado a ${res.price} Bs.`);
+      setRate(res.price.toString());
+    },
+    onError: (e: any) => toast.error(e.message || "Error al obtener precio de Binance"),
+  });
+
   const editConnection = (item: ApiConnection) => {
     const map = item.field_mapping as typeof emptyForm.field_mapping | null;
     setForm({
@@ -126,22 +142,47 @@ function Admin() {
 
         <section className="mb-7 mt-8 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
           <div><p className="eyebrow">CENTRO DE INTEGRACIONES</p><h1 className="mt-2 text-4xl font-black tracking-tight text-white sm:text-5xl">Todas tus APIs.<br/><span className="gradient-text">Un solo lugar.</span></h1><p className="mt-4 max-w-2xl text-slate-400">Conecta proveedores, valida credenciales y sincroniza tu catálogo sin tocar el código.</p></div>
-          <button className="primary-action" onClick={() => { setForm(emptyForm); setShowForm(!showForm); }}><Plus size={19}/>{showForm ? "Cerrar formulario" : "Conectar nueva API"}</button>
+          {activeTab === "connections" && <button className="primary-action" onClick={() => { setForm(emptyForm); setShowForm(!showForm); }}><Plus size={19}/>{showForm ? "Cerrar formulario" : "Conectar nueva API"}</button>}
         </section>
 
         <section className="stats-grid">
           <Stat icon={<CloudCog/>} label="APIs registradas" value={String(connections.length)} hint="Conexiones totales" tone="violet" />
           <Stat icon={<Activity/>} label="Conectadas" value={String(connected)} hint={`${connections.length - connected} requieren atención`} tone="green" />
-          <Stat icon={<PackageCheck/>} label="Productos" value={productTotal.toLocaleString("es-BO")} hint="Último inventario detectado" tone="blue" />
-          <div className="stat-card rate-card"><div><p>Tipo de cambio</p><div className="mt-3 flex gap-2"><input className="compact-input" type="number" min="0" step="0.01" placeholder="Bs por USD" value={rate} onChange={(e) => setRate(e.target.value)}/><button className="mini-action" disabled={!Number(rate) || rateMutation.isPending} onClick={() => rateMutation.mutate()}>{rateMutation.isPending ? <LoaderCircle className="animate-spin" size={17}/> : "Guardar"}</button></div></div></div>
+          <div className="stat-card rate-card">
+            <div>
+              <p>Tipo de cambio</p>
+              <div className="mt-3 flex gap-2">
+                <input className="compact-input w-28" type="number" min="0" step="0.01" placeholder="Bs por USD" value={rate} onChange={(e) => setRate(e.target.value)}/>
+                <button className="mini-action" disabled={!Number(rate) || rateMutation.isPending} onClick={() => rateMutation.mutate()}>
+                  {rateMutation.isPending ? <LoaderCircle className="animate-spin" size={17}/> : "Guardar"}
+                </button>
+                <button className="mini-action bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30" disabled={binanceMutation.isPending} onClick={() => binanceMutation.mutate()} title="Sincronizar con Binance P2P">
+                  {binanceMutation.isPending ? <LoaderCircle className="animate-spin" size={17}/> : "Binance P2P"}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="stat-card rate-card">
+            <div>
+              <p>Ganancia (%)</p>
+              <div className="mt-3 flex gap-2">
+                <input className="compact-input w-28" type="number" min="0" step="1" placeholder="Ej. 20" value={margin} onChange={(e) => setMargin(e.target.value)}/>
+                <button className="mini-action" disabled={!margin || marginMutation.isPending} onClick={() => marginMutation.mutate()}>
+                  {marginMutation.isPending ? <LoaderCircle className="animate-spin" size={17}/> : "Aplicar"}
+                </button>
+              </div>
+            </div>
+          </div>
         </section>
 
-        <div className="mt-8 flex gap-4 border-b border-white/10 pb-4">
-          <button className={`pb-2 text-lg font-semibold transition-colors ${!showInventory ? "text-emerald-400 border-b-2 border-emerald-400" : "text-slate-400 hover:text-white"}`} onClick={() => setShowInventory(false)}>Conexiones API</button>
-          <button className={`pb-2 text-lg font-semibold transition-colors ${showInventory ? "text-emerald-400 border-b-2 border-emerald-400" : "text-slate-400 hover:text-white"}`} onClick={() => setShowInventory(true)}>Inventario ({productTotal})</button>
+        <div className="mt-8 flex gap-8 border-b border-white/10 pb-4 overflow-x-auto">
+          <button className={`pb-2 text-lg font-semibold transition-colors whitespace-nowrap ${activeTab === "connections" ? "text-emerald-400 border-b-2 border-emerald-400" : "text-slate-400 hover:text-white"}`} onClick={() => setActiveTab("connections")}>Conexiones API</button>
+          <button className={`pb-2 text-lg font-semibold transition-colors whitespace-nowrap ${activeTab === "inventory" ? "text-emerald-400 border-b-2 border-emerald-400" : "text-slate-400 hover:text-white"}`} onClick={() => setActiveTab("inventory")}>Inventario ({productTotal})</button>
+          <button className={`pb-2 text-lg font-semibold transition-colors whitespace-nowrap ${activeTab === "orders" ? "text-emerald-400 border-b-2 border-emerald-400" : "text-slate-400 hover:text-white"}`} onClick={() => setActiveTab("orders")}>Pedidos</button>
+          <button className={`pb-2 text-lg font-semibold transition-colors whitespace-nowrap ${activeTab === "config" ? "text-emerald-400 border-b-2 border-emerald-400" : "text-slate-400 hover:text-white"}`} onClick={() => setActiveTab("config")}>Configuración</button>
         </div>
 
-        {!showInventory ? (
+        {activeTab === "connections" && (
           <>
             {showForm && <ConnectionForm form={form} setForm={setForm} showKey={showKey} setShowKey={setShowKey} onCancel={() => { setForm(emptyForm); setShowForm(false); }} onSave={() => saveMutation.mutate()} saving={saveMutation.isPending} />}
             <section className="panel mt-7">
@@ -149,9 +190,10 @@ function Admin() {
               {connectionsQuery.isLoading ? <div className="empty-state"><LoaderCircle className="animate-spin"/><p>Cargando tus conexiones...</p></div> : filtered.length === 0 ? <div className="empty-state"><Database size={34}/><h3>No hay APIs todavía</h3><p>Agrega tu primer proveedor para comenzar a importar productos.</p><button className="secondary-action" onClick={() => setShowForm(true)}><Plus size={17}/> Añadir API</button></div> : <div className="connection-grid">{filtered.map((item) => <ConnectionCard key={item.id} item={item} busy={busyId === item.id} onEdit={() => editConnection(item)} onAction={(action) => actionMutation.mutate({ id: item.id, action })}/>)}</div>}
             </section>
           </>
-        ) : (
-          <InventoryTab />
         )}
+        {activeTab === "inventory" && <InventoryTab />}
+        {activeTab === "orders" && <OrdersTab />}
+        {activeTab === "config" && <ConfigTab />}
       </div>
     </main>
   );
@@ -240,4 +282,182 @@ function ConnectionCard({ item, busy, onEdit, onAction }: { item: ApiConnection;
     {item.last_error && <p className="error-note">{item.last_error}</p>}
     <div className="card-actions"><button disabled={busy} onClick={() => onAction("test")} title="Probar conexión">{busy ? <LoaderCircle className="animate-spin" size={17}/> : <Zap size={17}/>} Probar</button><button disabled={busy} onClick={() => onAction("sync")} title="Sincronizar"><RefreshCw size={17}/> Sincronizar</button><button onClick={onEdit} className="square-action" title="Editar"><Pencil size={17}/></button><button disabled={busy} onClick={() => confirm(`¿Eliminar ${item.name}?`) && onAction("delete")} className="square-action danger" title="Eliminar"><Trash2 size={17}/></button></div>
   </article>;
+}
+
+function ConfigTab() {
+  const queryClient = useQueryClient();
+  const { data: config, isLoading } = useQuery({ 
+    queryKey: ["admin-config"], 
+    queryFn: () => import("@/lib/products.functions").then(m => m.getAdminConfig()) 
+  });
+
+  const [form, setForm] = useState({ telegram_bot_token: "", telegram_chat_id: "" });
+
+  useEffect(() => {
+    if (config) {
+      setForm({
+        telegram_bot_token: config.telegram_bot_token || "",
+        telegram_chat_id: config.telegram_chat_id || ""
+      });
+    }
+  }, [config]);
+
+  const updateMutation = useMutation({
+    mutationFn: () => import("@/lib/products.functions").then(m => m.updateAdminConfig({ data: form })),
+    onSuccess: () => {
+      toast.success("Configuración guardada");
+      queryClient.invalidateQueries({ queryKey: ["admin-config"] });
+    },
+    onError: () => toast.error("Error al guardar la configuración")
+  });
+
+  if (isLoading) return <div className="empty-state mt-7"><LoaderCircle className="animate-spin"/><p>Cargando configuración...</p></div>;
+
+  return (
+    <section className="panel mt-7">
+      <div className="panel-heading">
+        <div>
+          <h2>Configuración del Sistema</h2>
+          <p>Ajustes globales y notificaciones automatizadas.</p>
+        </div>
+      </div>
+      
+      <div className="mt-6 space-y-8">
+        <div className="bg-black/20 p-6 rounded-xl border border-white/5">
+          <h3 className="text-lg font-bold text-white mb-2">Notificaciones de Telegram</h3>
+          <p className="text-sm text-slate-400 mb-6">Recibe un mensaje en Telegram cada vez que un cliente realice un pedido.</p>
+          
+          <div className="space-y-4 max-w-xl">
+            <div>
+              <label className="block text-sm font-semibold text-slate-300 mb-1">Telegram Bot Token</label>
+              <input 
+                type="password" 
+                value={form.telegram_bot_token} 
+                onChange={e => setForm({...form, telegram_bot_token: e.target.value})} 
+                placeholder="123456789:ABCdefGHIjklmNOPqrstUVWxyz" 
+                className="w-full bg-black/40 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+              <p className="text-xs text-slate-500 mt-1">Consíguelo hablando con @BotFather en Telegram.</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-semibold text-slate-300 mb-1">Telegram Chat ID</label>
+              <input 
+                type="text" 
+                value={form.telegram_chat_id} 
+                onChange={e => setForm({...form, telegram_chat_id: e.target.value})} 
+                placeholder="Ej. 12345678" 
+                className="w-full bg-black/40 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+              <p className="text-xs text-slate-500 mt-1">Tu ID personal de Telegram. Puedes obtenerlo hablando con @userinfobot.</p>
+            </div>
+
+            <button 
+              onClick={() => updateMutation.mutate()} 
+              disabled={updateMutation.isPending}
+              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-bold transition-colors disabled:opacity-50"
+            >
+              {updateMutation.isPending ? "Guardando..." : "Guardar Configuración"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OrdersTab() {
+  const queryClient = useQueryClient();
+  const { data: orders, isLoading } = useQuery({ 
+    queryKey: ["admin-orders"], 
+    queryFn: () => import("@/lib/orders.server").then(m => m.getAdminOrders()) 
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (orderId: string) => import("@/lib/orders.server").then(m => m.approveOrder({ data: { orderId } })),
+    onSuccess: () => {
+      toast.success("Orden aprobada y entregada correctamente");
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+    },
+    onError: (err: any) => toast.error(err.message || "Error al aprobar orden")
+  });
+
+  if (isLoading) return <div className="empty-state mt-7"><LoaderCircle className="animate-spin"/><p>Cargando pedidos...</p></div>;
+
+  return (
+    <section className="panel mt-7">
+      <div className="panel-heading">
+        <div>
+          <h2>Pedidos de Clientes</h2>
+          <p>Gestiona los pagos manuales y revisa las compras automáticas.</p>
+        </div>
+      </div>
+      <div className="overflow-x-auto mt-4">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-white/10 text-slate-400">
+              <th className="p-3">ID / Fecha</th>
+              <th className="p-3">Cliente</th>
+              <th className="p-3">Total (USD)</th>
+              <th className="p-3">Método</th>
+              <th className="p-3">Estado</th>
+              <th className="p-3">Comprobante</th>
+              <th className="p-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders?.length === 0 && (
+              <tr><td colSpan={7} className="p-8 text-center text-slate-500">No hay pedidos registrados</td></tr>
+            )}
+            {orders?.map((order: any) => (
+              <tr key={order.id} className="border-b border-white/5 hover:bg-white/5">
+                <td className="p-3">
+                  <span className="font-mono text-xs block text-slate-300" title={order.id}>{order.id.slice(0, 8)}...</span>
+                  <span className="text-slate-500 text-xs">{new Date(order.created_at).toLocaleDateString()}</span>
+                </td>
+                <td className="p-3">
+                  <strong className="block text-white">{order.customer_name}</strong>
+                  <span className="text-slate-400 text-xs">{order.customer_phone}</span>
+                </td>
+                <td className="p-3 font-black text-emerald-400">${order.total_usd}</td>
+                <td className="p-3 text-slate-300">{order.payment_method_name}</td>
+                <td className="p-3">
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${
+                    order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                    order.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
+                    order.status === 'delivered' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'
+                  }`}>
+                    {order.status}
+                  </span>
+                </td>
+                <td className="p-3">
+                  {order.payment_proof_url ? (
+                    <a href={order.payment_proof_url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline flex items-center gap-1">
+                      <Eye size={14}/> Ver
+                    </a>
+                  ) : <span className="text-slate-600">-</span>}
+                </td>
+                <td className="p-3">
+                  {(order.status === 'pending' || order.status === 'processing') && (
+                    <button 
+                      onClick={() => confirm("¿Seguro que deseas descontar saldo y entregar el producto?") && approveMutation.mutate(order.id)}
+                      disabled={approveMutation.isPending}
+                      className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-bold text-xs disabled:opacity-50"
+                    >
+                      {approveMutation.isPending ? "Aprobando..." : "Aprobar y Entregar"}
+                    </button>
+                  )}
+                  {order.status === 'delivered' && (
+                    <span className="text-emerald-500 font-bold text-xs flex items-center gap-1">
+                      <CheckCircle2 size={14}/> Entregado
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
 }

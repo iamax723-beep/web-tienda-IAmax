@@ -155,14 +155,14 @@ function Index() {
                     <div className="flex flex-col">
                       <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Precio IAmax</span>
                       <span className="text-4xl font-black text-primary tracking-tighter">
-                        ${(Number(product.custom_usd_price ?? product.original_price) * currentRate).toFixed(2)}
+                        ${(Number(product.custom_usd_price ?? (product.original_price * (1 + (storeData?.profitMargin || 0) / 100))) * currentRate).toFixed(2)}
                       </span>
                     </div>
                       <Button size="icon" className="rounded-full h-14 w-14 bg-linear-to-tr from-primary to-secondary hover:shadow-[0_10px_20px_rgba(0,0,0,0.2)] hover:shadow-primary/30 transition-all duration-500 group/btn active:scale-95" disabled={product.stock === 0} onClick={() => {
                         cartStore.addItem({
                           product_id: product.id,
                           name: product.name,
-                          price_usd: Number(product.custom_usd_price ?? product.original_price),
+                          price_usd: Number(product.custom_usd_price ?? (product.original_price * (1 + (storeData?.profitMargin || 0) / 100))),
                           image_url: product.custom_image_url || product.image_url,
                           store_name: product.stores?.name,
                           warranty_days: product.warranty_days

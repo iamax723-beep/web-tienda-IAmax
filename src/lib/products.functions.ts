@@ -77,11 +77,23 @@ export const listApiConnections = createServerFn({ method: "GET" }).handler(asyn
 export const getStorefrontData = createServerFn({ method: "GET" }).handler(async () => {
   const { getDb } = await import("@/lib/db.server");
   const sql = getDb();
-  const [products, rateRows] = await Promise.all([
+  const [products, rateRows, marginRows] = await Promise.all([
     sql`SELECT p.*, json_build_object('name', s.name) AS stores FROM products p LEFT JOIN stores s ON s.id = p.store_id ORDER BY p.created_at DESC`,
     sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'dollar_rate' LIMIT 1`,
+    sql<{ value: string }[]>`SELECT value FROM settings WHERE key = 'profit_margin' LIMIT 1`,
   ]);
-  return { products, dollarRate: Number(rateRows[0]?.value ?? 1) };
+  return { 
+    products, 
+    dollarRate: Number(rateRows[0]?.value ?? 1),
+    profitMargin: Number(marginRows[0]?.value ?? 0)
+  };
+});
+
+export const updateProfitMargin = createServerFn({ method: "POST" }).validator((data) => z.object({ margin: z.number().min(0) }).parse(data)).handler(async ({ data }) => {
+  const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
+  const { getDb } = await import("@/lib/db.server");
+  await getDb()`INSERT INTO settings (key,value,updated_at) VALUES ('profit_margin',${data.margin.toString()},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+  return { success: true };
 });
 
 export const saveApiConnection = createServerFn({ method: "POST" }).validator((data) => connectionSchema.parse(data)).handler(async ({ data }) => {
@@ -129,6 +141,30 @@ export const syncStoreProducts = createServerFn({ method: "POST" }).validator((d
   return { success: true, count: products.length };
 });
 
+export const syncBinanceRate = createServerFn({ method: "POST" }).handler(async () => {
+  const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
+  const { getDb } = await import("@/lib/db.server");
+  const response = await fetch('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fiat: 'BOB', page: 1, rows: 5, tradeType: 'SELL', asset: 'USDT',
+      countries: [], proMerchantAds: false, shieldMerchantAds: false,
+      filterType: 'all', periods: [], additionalKycVerifyFilter: 0,
+      publisherType: null, payTypes: [], classifies: ['mass', 'profession']
+    })
+  });
+  const result = await response.json();
+  if (result.code === '000000' && result.data && result.data.length > 0) {
+    const price = Number(result.data[0].adv.price);
+    if (!isNaN(price) && price > 0) {
+      await getDb()`INSERT INTO settings (key,value,updated_at) VALUES ('dollar_rate',${price.toString()},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+      return { success: true, price };
+    }
+  }
+  throw new Error("No se pudo obtener el precio de Binance");
+});
+
 export const updateDollarRate = createServerFn({ method: "POST" }).validator((data) => z.object({ rate: z.number().positive() }).parse(data)).handler(async ({ data }) => {
   const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
   const { getDb } = await import("@/lib/db.server");
@@ -150,5 +186,30 @@ export const updateProductDetails = createServerFn({ method: "POST" }).validator
   const { getDb } = await import("@/lib/db.server");
   const sql = getDb();
   await sql`UPDATE products SET custom_usd_price=${data.custom_usd_price}, custom_image_url=${data.custom_image_url}, warranty_days=${data.warranty_days} WHERE id=${data.id}`;
+  return { success: true };
+});
+
+export const getAdminConfig = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
+  const { getDb } = await import("@/lib/db.server");
+  const sql = getDb();
+  const rows = await sql<{ key: string, value: string }[]>`SELECT key, value FROM settings WHERE key IN ('telegram_bot_token', 'telegram_chat_id')`;
+  const config: Record<string, string> = {};
+  for (const row of rows) config[row.key] = row.value;
+  return config;
+});
+
+export const updateAdminConfig = createServerFn({ method: "POST" }).validator((data) => z.object({ 
+  telegram_bot_token: z.string().optional(), telegram_chat_id: z.string().optional()
+}).parse(data)).handler(async ({ data }) => {
+  const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
+  const { getDb } = await import("@/lib/db.server");
+  const sql = getDb();
+  if (data.telegram_bot_token !== undefined) {
+    await sql`INSERT INTO settings (key,value,updated_at) VALUES ('telegram_bot_token',${data.telegram_bot_token},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+  }
+  if (data.telegram_chat_id !== undefined) {
+    await sql`INSERT INTO settings (key,value,updated_at) VALUES ('telegram_chat_id',${data.telegram_chat_id},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+  }
   return { success: true };
 });

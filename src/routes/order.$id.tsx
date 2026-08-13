@@ -142,6 +142,27 @@ function OrderPage() {
               )}
 
             </section>
+
+            {isCompleted && order.provider_order_id && (
+              <section className="bg-emerald-500/10 rounded-[2rem] border border-emerald-500/20 p-8 shadow-xl mt-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                  <h2 className="text-xl font-bold text-emerald-400">Tus Productos / Keys</h2>
+                </div>
+                <div className="bg-black/40 rounded-xl p-4 border border-emerald-500/10 relative group">
+                  <pre className="text-sm font-mono text-emerald-100 whitespace-pre-wrap">{order.provider_order_id}</pre>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-emerald-500/20 text-emerald-300"
+                    onClick={() => copyToClipboard(order.provider_order_id)}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-emerald-400/60 mt-4 text-center">Guarda esta información en un lugar seguro.</p>
+              </section>
+            )}
           </div>
         </div>
       </main>
