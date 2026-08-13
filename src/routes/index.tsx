@@ -90,94 +90,109 @@ function Index() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div>
             {productsLoading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="space-y-4 animate-pulse">
-                  <div className="aspect-square bg-muted rounded-3xl" />
-                  <div className="h-4 bg-muted rounded w-3/4" />
-                  <div className="h-6 bg-muted rounded w-1/2" />
-                </div>
-              ))
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} className="space-y-4 animate-pulse">
+                    <div className="aspect-video bg-muted rounded-2xl" />
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-6 bg-muted rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
             ) : products?.length === 0 ? (
-              <div className="col-span-full py-24 text-center space-y-4">
+              <div className="py-24 text-center space-y-4">
                 <div className="w-20 h-20 bg-muted rounded-full mx-auto flex items-center justify-center">
                   <Settings className="w-10 h-10 text-muted-foreground/40" />
                 </div>
                 <p className="text-muted-foreground font-medium">No hay productos disponibles actualmente.</p>
               </div>
-            ) : products?.map((product: any) => (
-              <Card key={product.id} className="group border border-primary/5 shadow-xl hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] hover:shadow-primary/20 transition-all duration-700 overflow-hidden rounded-[3rem] bg-card flex flex-col hover:-translate-y-2">
-                <div className="relative aspect-[4/5] overflow-hidden">
-                  {product.custom_image_url || product.image_url ? (
-                    <img 
-                      src={product.custom_image_url || product.image_url} 
-                      alt={product.name} 
-                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-muted flex items-center justify-center">
-                      <Settings className="w-16 h-16 text-muted-foreground/10" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
-                  <div className="absolute top-6 left-6 right-6 flex flex-col gap-2 items-start">
-                    <div className="flex justify-between items-start w-full">
-                      <span className="px-5 py-2 bg-primary/90 backdrop-blur-xl text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-2xl border border-white/20">
-                        {product.stores?.name}
-                      </span>
-                      {product.stock !== null && product.stock !== undefined && (
-                        <span className={`px-4 py-1.5 backdrop-blur-xl font-bold rounded-xl text-[10px] uppercase tracking-wider shadow-lg border ${product.stock > 0 ? 'bg-green-500/80 text-white border-green-400/30' : 'bg-red-500/80 text-white border-red-400/30'}`}>
-                          {product.stock > 0 ? `${product.stock} en stock` : 'Agotado'}
-                        </span>
-                      )}
-                    </div>
-                    {product.warranty_days ? (
-                      <span className="px-3 py-1 bg-yellow-500/90 backdrop-blur-xl text-white font-black rounded-xl text-[9px] uppercase tracking-[0.2em] shadow-xl border border-yellow-300/30 flex items-center gap-1">
-                        <Settings className="w-3 h-3" /> Garantía: {product.warranty_days} días
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="absolute bottom-6 left-6 right-6">
-                     <h3 className="font-bold text-xl text-white leading-tight line-clamp-2 drop-shadow-md">
-                        {product.name}
-                      </h3>
+            ) : (
+              Object.entries(
+                products?.reduce((acc: any, product: any) => {
+                  let storeName = product.stores?.name || 'Otros Productos';
+                  if (!acc[storeName]) acc[storeName] = [];
+                  acc[storeName].push(product);
+                  return acc;
+                }, {}) || {}
+              ).map(([storeName, storeProducts]: [string, any]) => (
+                <div key={storeName} className="mb-12">
+                  <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center"><Settings className="w-4 h-4"/></span>
+                    {storeName}
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                    {storeProducts.map((product: any) => (
+                      <Card key={product.id} className="group border border-primary/5 shadow-lg hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 overflow-hidden rounded-2xl bg-card flex flex-col hover:-translate-y-1">
+                        <div className="relative aspect-video overflow-hidden">
+                          {product.custom_image_url || product.image_url ? (
+                            <img 
+                              src={product.custom_image_url || product.image_url} 
+                              alt={product.name} 
+                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                              <Settings className="w-8 h-8 text-muted-foreground/20" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-80" />
+                          <div className="absolute top-3 left-3 right-3 flex justify-between items-start">
+                            {product.warranty_days ? (
+                              <span className="px-2 py-1 bg-yellow-500/90 backdrop-blur-md text-white font-bold rounded-md text-[8px] uppercase tracking-wider shadow-md">
+                                {product.warranty_days}D Garantía
+                              </span>
+                            ) : <div/>}
+                            {product.stock !== null && product.stock !== undefined && (
+                              <span className={`px-2 py-1 backdrop-blur-md font-bold rounded-md text-[8px] uppercase tracking-wider shadow-sm ${product.stock > 0 ? 'bg-green-500/80 text-white' : 'bg-red-500/80 text-white'}`}>
+                                {product.stock > 0 ? `${product.stock} stock` : 'Agotado'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="absolute bottom-3 left-3 right-3">
+                            <h3 className="font-bold text-sm sm:text-base text-white leading-tight line-clamp-2 drop-shadow-md">
+                              {product.name}
+                            </h3>
+                          </div>
+                        </div>
+                        <CardContent className="p-4 sm:p-5 flex-1 flex flex-col justify-between bg-card">
+                          <div className="flex items-end justify-between gap-2">
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Precio</span>
+                              <div className="flex flex-col truncate">
+                                <span className="text-xl sm:text-2xl font-black text-primary tracking-tight truncate">
+                                  ${Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))).toFixed(2)}
+                                </span>
+                                {currentRate !== 1 && (
+                                  <span className="text-[10px] sm:text-xs font-bold text-muted-foreground truncate">
+                                    ≈ Bs. {(Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))) * currentRate).toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <Button size="icon" className="rounded-xl h-10 w-10 sm:h-12 sm:w-12 bg-primary hover:bg-primary/90 transition-all active:scale-95 shrink-0 shadow-md" disabled={product.stock === 0} onClick={() => {
+                              cartStore.addItem({
+                                product_id: product.id,
+                                name: product.name,
+                                price_usd: Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))),
+                                image_url: product.custom_image_url || product.image_url,
+                                store_name: product.stores?.name,
+                                warranty_days: product.warranty_days,
+                                provider_name: product.provider_name
+                              });
+                              toast.success("Añadido al carrito");
+                            }}>
+                              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 </div>
-                <CardContent className="p-8 flex-1 flex flex-col justify-between bg-linear-to-b from-card to-background">
-                  <div className="pt-2 flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Precio IAmax</span>
-                      <div className="flex flex-col">
-                        <span className="text-4xl font-black text-primary tracking-tighter">
-                          ${Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))).toFixed(2)} <span className="text-xl">USD</span>
-                        </span>
-                        {currentRate !== 1 && (
-                          <span className="text-sm font-bold text-muted-foreground">
-                            ≈ Bs. {(Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))) * currentRate).toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                      <Button size="icon" className="rounded-full h-14 w-14 bg-linear-to-tr from-primary to-secondary hover:shadow-[0_10px_20px_rgba(0,0,0,0.2)] hover:shadow-primary/30 transition-all duration-500 group/btn active:scale-95 shrink-0" disabled={product.stock === 0} onClick={() => {
-                        cartStore.addItem({
-                          product_id: product.id,
-                          name: product.name,
-                          price_usd: Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))),
-                          image_url: product.custom_image_url || product.image_url,
-                          store_name: product.stores?.name,
-                          warranty_days: product.warranty_days,
-                          provider_name: product.provider_name
-                        });
-                        toast.success("Producto añadido al carrito");
-                      }}>
-                        <ShoppingCart className="w-6 h-6 text-white transition-transform duration-700" />
-                      </Button>
-                    </div>
-                  </CardContent>
-              </Card>
-            ))}
-          </div>
+              ))
+            )}
         </div>
       </div>
 
