@@ -195,19 +195,19 @@ function Checkout() {
           </div>
 
           <div className="lg:col-span-5">
-            <div className="bg-card rounded-[3rem] border border-white/5 shadow-2xl p-6 sm:p-8 sticky top-24">
+            <div className="bg-card rounded-3xl sm:rounded-[3rem] border border-white/5 shadow-2xl p-5 sm:p-8 sticky top-24">
               <h3 className="text-xl font-bold mb-6">Resumen del Pedido</h3>
               <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 mb-6">
                 {cart.items.map(item => (
-                  <div key={item.product_id} className="flex gap-4 items-center">
-                    <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden shrink-0">
+                  <div key={item.product_id} className="flex gap-3 sm:gap-4 items-center">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-muted overflow-hidden shrink-0">
                       {item.image_url ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" /> : null}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate text-foreground">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.quantity} x ${(item.price_usd * currentRate).toFixed(2)}</p>
+                      <p className="font-semibold text-xs sm:text-sm truncate text-foreground">{item.name}</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">{item.quantity} x ${(item.price_usd * currentRate).toFixed(2)}</p>
                     </div>
-                    <div className="font-bold text-sm text-right whitespace-nowrap">
+                    <div className="font-bold text-xs sm:text-sm text-right whitespace-nowrap shrink-0">
                       ${(item.price_usd * item.quantity * currentRate).toFixed(2)}
                     </div>
                   </div>
@@ -215,30 +215,30 @@ function Checkout() {
               </div>
               
               <div className="border-t border-white/10 pt-6 space-y-4">
-                  <div className="flex justify-between text-sm text-muted-foreground font-medium">
+                  <div className="flex justify-between text-xs sm:text-sm text-muted-foreground font-medium">
                     <span>Subtotal USD</span>
                     <span>${totalUsd.toFixed(2)} USD</span>
                   </div>
-                  <div className="flex justify-between text-sm text-muted-foreground font-medium">
+                  <div className="flex justify-between text-xs sm:text-sm text-muted-foreground font-medium">
                     <span>Tipo de cambio</span>
                     <span>1 USD = {currentRate}</span>
                   </div>
                   <div className="flex justify-between items-end pt-4 border-t border-white/10">
-                    <span className="font-bold">Total a Pagar</span>
-                    <div className="text-right">
+                    <span className="font-bold text-sm sm:text-base">Total a Pagar</span>
+                    <div className="text-right min-w-0 flex-1 pl-4">
                       {currentRate !== 1 ? (
                         <>
-                          <span className="block text-4xl font-black text-primary">Bs. {totalFiat.toFixed(2)}</span>
-                          <span className="text-sm font-bold text-muted-foreground">${totalUsd.toFixed(2)} USD</span>
+                          <span className="block text-2xl sm:text-4xl font-black text-primary truncate">Bs. {totalFiat.toFixed(2)}</span>
+                          <span className="text-xs sm:text-sm font-bold text-muted-foreground">${totalUsd.toFixed(2)} USD</span>
                         </>
                       ) : (
-                        <span className="block text-4xl font-black text-primary">${totalFiat.toFixed(2)} USD</span>
+                        <span className="block text-2xl sm:text-4xl font-black text-primary truncate">${totalFiat.toFixed(2)} USD</span>
                       )}
                     </div>
                   </div>
                 </div>
 
-              <Button form="checkout-form" type="submit" disabled={orderMutation.isPending} className="w-full h-14 rounded-2xl bg-linear-to-r from-primary to-secondary font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform mt-8">
+              <Button form="checkout-form" type="submit" disabled={orderMutation.isPending} className="w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-linear-to-r from-primary to-secondary font-black text-base sm:text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform mt-8">
                 {orderMutation.isPending ? <LoaderCircle className="animate-spin" /> : "Confirmar Pedido"}
               </Button>
             </div>

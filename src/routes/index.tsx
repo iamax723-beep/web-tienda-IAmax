@@ -9,6 +9,25 @@ import { cartStore } from "@/lib/cartStore";
 import { toast } from "sonner";
 import { useSyncExternalStore } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { getFileUrl } from "@/lib/supabase.client";
+import { Copy, Plus, Minus, Search, Smartphone, Ticket, Package, MapPin, Zap } from "lucide-react";
+
+const storeColors = [
+  { text: 'text-violet-500', bg: 'bg-violet-500', bgLight: 'bg-violet-500/20', hover: 'hover:bg-violet-600', shadow: 'hover:shadow-violet-500/20', border: 'border-violet-500/10' },
+  { text: 'text-emerald-500', bg: 'bg-emerald-500', bgLight: 'bg-emerald-500/20', hover: 'hover:bg-emerald-600', shadow: 'hover:shadow-emerald-500/20', border: 'border-emerald-500/10' },
+  { text: 'text-blue-500', bg: 'bg-blue-500', bgLight: 'bg-blue-500/20', hover: 'hover:bg-blue-600', shadow: 'hover:shadow-blue-500/20', border: 'border-blue-500/10' },
+  { text: 'text-rose-500', bg: 'bg-rose-500', bgLight: 'bg-rose-500/20', hover: 'hover:bg-rose-600', shadow: 'hover:shadow-rose-500/20', border: 'border-rose-500/10' },
+  { text: 'text-amber-500', bg: 'bg-amber-500', bgLight: 'bg-amber-500/20', hover: 'hover:bg-amber-600', shadow: 'hover:shadow-amber-500/20', border: 'border-amber-500/10' },
+  { text: 'text-cyan-500', bg: 'bg-cyan-500', bgLight: 'bg-cyan-500/20', hover: 'hover:bg-cyan-600', shadow: 'hover:shadow-cyan-500/20', border: 'border-cyan-500/10' },
+];
+
+function getStoreColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return storeColors[Math.abs(hash) % storeColors.length];
+}
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -116,15 +135,17 @@ function Index() {
                   acc[storeName].push(product);
                   return acc;
                 }, {}) || {}
-              ).map(([storeName, storeProducts]: [string, any]) => (
+              ).map(([storeName, storeProducts]: [string, any]) => {
+                const storeColor = getStoreColor(storeName);
+                return (
                 <div key={storeName} className="mb-12">
                   <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center"><Settings className="w-4 h-4"/></span>
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${storeColor.bgLight} ${storeColor.text}`}><Settings className="w-4 h-4"/></span>
                     {storeName}
                   </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                     {storeProducts.map((product: any) => (
-                      <Card key={product.id} className="group border border-primary/5 shadow-lg hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 overflow-hidden rounded-2xl bg-card flex flex-col hover:-translate-y-1">
+                      <Card key={product.id} className={`group border shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden rounded-2xl bg-card flex flex-col hover:-translate-y-1 ${storeColor.border} ${storeColor.shadow}`}>
                         <div className="relative aspect-video overflow-hidden">
                           {product.custom_image_url || product.image_url ? (
                             <img 
@@ -161,7 +182,7 @@ function Index() {
                             <div className="flex flex-col min-w-0">
                               <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Precio</span>
                               <div className="flex flex-col truncate">
-                                <span className="text-xl sm:text-2xl font-black text-primary tracking-tight truncate">
+                                <span className={`text-xl sm:text-2xl font-black tracking-tight truncate ${storeColor.text}`}>
                                   ${Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))).toFixed(2)}
                                 </span>
                                 {currentRate !== 1 && (
@@ -171,7 +192,7 @@ function Index() {
                                 )}
                               </div>
                             </div>
-                            <Button size="icon" className="rounded-xl h-10 w-10 sm:h-12 sm:w-12 bg-primary hover:bg-primary/90 transition-all active:scale-95 shrink-0 shadow-md" disabled={product.stock === 0} onClick={() => {
+                            <Button size="icon" className={`rounded-xl h-10 w-10 sm:h-12 sm:w-12 transition-all active:scale-95 shrink-0 shadow-md ${storeColor.bg} ${storeColor.hover} text-white`} disabled={product.stock === 0} onClick={() => {
                               cartStore.addItem({
                                 product_id: product.id,
                                 name: product.name,
@@ -183,7 +204,7 @@ function Index() {
                               });
                               toast.success("Añadido al carrito");
                             }}>
-                              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+                              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                             </Button>
                           </div>
                         </CardContent>
@@ -191,7 +212,7 @@ function Index() {
                     ))}
                   </div>
                 </div>
-              ))
+              )})
             )}
           </div>
         </div>
