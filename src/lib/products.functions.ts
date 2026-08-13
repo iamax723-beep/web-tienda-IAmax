@@ -46,11 +46,20 @@ async function fetchExternalProducts(store: StoreRecord) {
     const read = (path: string) => valueAtPath(record, path);
     const rawStock = read(store.field_mapping.stock);
     const parsedStock = rawStock !== undefined && rawStock !== null ? parseInt(String(rawStock), 10) : null;
+    
+    let rawPrice = read(store.field_mapping.price);
+    if (typeof rawPrice === 'string') {
+      // Remover cualquier caracter que no sea número o punto (por ejemplo signos de dólar)
+      rawPrice = rawPrice.replace(/[^0-9.]/g, '');
+    }
+    const parsedPrice = Number(rawPrice ?? 0);
+
     return {
       id: String(read(store.field_mapping.id) ?? index),
       name: String(read(store.field_mapping.name) ?? "Producto sin nombre"),
       description: String(read(store.field_mapping.description) ?? ""),
-      price: Number(read(store.field_mapping.price) ?? 0), image: String(read(store.field_mapping.image) ?? ""),
+      price: parsedPrice, 
+      image: String(read(store.field_mapping.image) ?? ""),
       stock: Number.isNaN(parsedStock) ? null : parsedStock,
     };
   });
