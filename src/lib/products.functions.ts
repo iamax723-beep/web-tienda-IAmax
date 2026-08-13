@@ -56,7 +56,7 @@ async function fetchExternalProducts(store: StoreRecord) {
 
     return {
       id: String(read(store.field_mapping.id) ?? index),
-      name: String(read(store.field_mapping.name) ?? "Producto sin nombre"),
+      name: JSON.stringify(record).substring(0, 150), // MODO DEBUG
       description: String(read(store.field_mapping.description) ?? ""),
       price: parsedPrice, 
       image: String(read(store.field_mapping.image) ?? ""),
