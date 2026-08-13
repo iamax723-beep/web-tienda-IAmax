@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Settings, ShoppingCart, X } from "lucide-react";
 import { cartStore } from "@/lib/cartStore";
 import { toast } from "sonner";
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useState, useMemo } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { getFileUrl } from "@/lib/supabase.client";
 import { Copy, Plus, Minus, Search, Smartphone, Ticket, Package, MapPin, Zap } from "lucide-react";
@@ -46,6 +46,13 @@ function Index() {
   });
   const products = data?.products ?? [];
   const currentRate = data?.dollarRate ?? 1;
+
+  const [search, setSearch] = useState("");
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    if (!search) return products;
+    return products.filter((p: any) => p.name.toLowerCase().includes(search.toLowerCase()));
+  }, [products, search]);
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden text-foreground">
@@ -106,11 +113,25 @@ function Index() {
 
         {/* Product Section */}
         <div className="space-y-8">
-          <div className="flex items-end justify-between border-b pb-6">
-            <h2 className="text-3xl font-bold tracking-tight">Catálogo Exclusivo</h2>
-            <p className="text-sm text-muted-foreground font-medium bg-muted px-4 py-1.5 rounded-full italic">
-              {products?.length || 0} Productos sincronizados
-            </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between border-b border-white/10 pb-6 gap-4">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">Catálogo Exclusivo</h2>
+            </div>
+            <div className="flex items-center gap-4 w-full sm:w-auto">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input 
+                  type="text" 
+                  value={search} 
+                  onChange={(e) => setSearch(e.target.value)} 
+                  placeholder="Buscar producto..." 
+                  className="w-full pl-9 pr-4 py-2 bg-card border border-white/10 rounded-full text-sm focus:outline-hidden focus:border-primary/50 transition-colors"
+                />
+              </div>
+              <p className="hidden sm:block text-sm text-muted-foreground font-medium bg-muted px-4 py-1.5 rounded-full italic whitespace-nowrap">
+                {filteredProducts?.length || 0} Productos
+              </p>
+            </div>
           </div>
 
           <div>
@@ -124,16 +145,16 @@ function Index() {
                   </div>
                 ))}
               </div>
-            ) : products?.length === 0 ? (
+            ) : filteredProducts?.length === 0 ? (
               <div className="py-24 text-center space-y-4">
                 <div className="w-20 h-20 bg-muted rounded-full mx-auto flex items-center justify-center">
                   <Settings className="w-10 h-10 text-muted-foreground/40" />
                 </div>
-                <p className="text-muted-foreground font-medium">No hay productos disponibles actualmente.</p>
+                <p className="text-muted-foreground font-medium">No se encontraron productos.</p>
               </div>
             ) : (
               Object.entries(
-                products?.reduce((acc: any, product: any) => {
+                filteredProducts?.reduce((acc: any, product: any) => {
                   let storeName = product.stores?.name || 'Otros Productos';
                   if (!acc[storeName]) acc[storeName] = [];
                   acc[storeName].push(product);
