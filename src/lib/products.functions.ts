@@ -212,12 +212,13 @@ export const listAdminProducts = createServerFn({ method: "GET" }).handler(async
 });
 
 export const updateProductDetails = createServerFn({ method: "POST" }).validator((data) => z.object({ 
-  id: z.string().uuid(), custom_usd_price: z.number().nullable(), custom_image_url: z.string().nullable(), warranty_days: z.number().nullable()
+  id: z.string().uuid(), custom_usd_price: z.number().nullable(), custom_image_url: z.string().nullable(), warranty_days: z.number().nullable(),
+  provider_name: z.string().nullable().optional(), provider_product_id: z.string().nullable().optional(), provider_variant_id: z.string().nullable().optional()
 }).parse(data)).handler(async ({ data }) => {
   const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
   const { getDb } = await import("@/lib/db.server");
   const sql = getDb();
-  await sql`UPDATE products SET custom_usd_price=${data.custom_usd_price}, custom_image_url=${data.custom_image_url}, warranty_days=${data.warranty_days} WHERE id=${data.id}`;
+  await sql`UPDATE products SET custom_usd_price=${data.custom_usd_price}, custom_image_url=${data.custom_image_url}, warranty_days=${data.warranty_days}, provider_name=${data.provider_name ?? null}, provider_product_id=${data.provider_product_id ?? null}, provider_variant_id=${data.provider_variant_id ?? null} WHERE id=${data.id}`;
   return { success: true };
 });
 
@@ -225,7 +226,7 @@ export const getAdminConfig = createServerFn({ method: "GET" }).handler(async ()
   const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
   const { getDb } = await import("@/lib/db.server");
   const sql = getDb();
-  const rows = await sql<{ key: string, value: string }[]>`SELECT key, value FROM settings WHERE key IN ('telegram_bot_token', 'telegram_chat_id', 'binance_pay_id', 'qr_image_url', 'binance_api_key', 'binance_secret_key')`;
+  const rows = await sql<{ key: string, value: string }[]>`SELECT key, value FROM settings WHERE key IN ('telegram_bot_token', 'telegram_chat_id', 'binance_pay_id', 'qr_image_url', 'binance_api_key', 'binance_secret_key', 'pixverify_api_key', 'prodseller_api_key', 'quantumvault_api_key')`;
   const config: Record<string, string> = {};
   for (const row of rows) config[row.key] = row.value;
   return config;
@@ -233,7 +234,8 @@ export const getAdminConfig = createServerFn({ method: "GET" }).handler(async ()
 
 export const updateAdminConfig = createServerFn({ method: "POST" }).validator((data) => z.object({ 
   telegram_bot_token: z.string().optional(), telegram_chat_id: z.string().optional(), binance_pay_id: z.string().optional(), qr_image_url: z.string().optional(),
-  binance_api_key: z.string().optional(), binance_secret_key: z.string().optional()
+  binance_api_key: z.string().optional(), binance_secret_key: z.string().optional(),
+  pixverify_api_key: z.string().optional(), prodseller_api_key: z.string().optional(), quantumvault_api_key: z.string().optional()
 }).parse(data)).handler(async ({ data }) => {
   const { requireAdmin } = await import("@/lib/admin-auth.server"); requireAdmin();
   const { getDb } = await import("@/lib/db.server");
@@ -255,6 +257,15 @@ export const updateAdminConfig = createServerFn({ method: "POST" }).validator((d
   }
   if (data.binance_secret_key !== undefined) {
     await sql`INSERT INTO settings (key,value,updated_at) VALUES ('binance_secret_key',${data.binance_secret_key},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+  }
+  if (data.pixverify_api_key !== undefined) {
+    await sql`INSERT INTO settings (key,value,updated_at) VALUES ('pixverify_api_key',${data.pixverify_api_key},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+  }
+  if (data.prodseller_api_key !== undefined) {
+    await sql`INSERT INTO settings (key,value,updated_at) VALUES ('prodseller_api_key',${data.prodseller_api_key},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
+  }
+  if (data.quantumvault_api_key !== undefined) {
+    await sql`INSERT INTO settings (key,value,updated_at) VALUES ('quantumvault_api_key',${data.quantumvault_api_key},NOW()) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`;
   }
   return { success: true };
 });

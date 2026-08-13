@@ -206,7 +206,7 @@ function Admin() {
 function InventoryTab() {
   const { data: products, isLoading } = useQuery({ queryKey: ["admin-products"], queryFn: () => import("@/lib/products.functions").then(m => m.listAdminProducts()) });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ custom_usd_price: "", custom_image_url: "", warranty_days: "" });
+  const [editForm, setEditForm] = useState({ custom_usd_price: "", custom_image_url: "", warranty_days: "", provider_name: "none", provider_product_id: "", provider_variant_id: "" });
   const { data: config } = useQuery({ queryKey: ["admin-config"], queryFn: () => import("@/lib/products.functions").then(m => m.getAdminConfig()) });
   const profitMargin = Number(config?.profit_margin || 0);
 
@@ -223,14 +223,42 @@ function InventoryTab() {
       <div className="panel-heading"><div><h2>Inventario Sincronizado</h2><p>Fija tus propios precios (en USD), URLs de imágenes y garantía.</p></div></div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm mt-4">
-          <thead><tr className="border-b border-white/10 text-slate-400"><th className="p-3">Producto</th><th className="p-3">Proveedor</th><th className="p-3">Stock</th><th className="p-3">Garantía</th><th className="p-3">Precio Base</th><th className="p-3">Tu Precio (USD)</th><th className="p-3">Imagen (URL)</th><th className="p-3">Acciones</th></tr></thead>
+          <thead><tr className="border-b border-white/10 text-slate-400"><th className="p-3">Producto</th><th className="p-3">API Automática</th><th className="p-3">Stock</th><th className="p-3">Garantía</th><th className="p-3">Precio Base</th><th className="p-3">Tu Precio (USD)</th><th className="p-3">Imagen (URL)</th><th className="p-3">Acciones</th></tr></thead>
           <tbody>
             {products?.map((p: any) => {
               const isEditing = editingId === p.id;
               return (
                 <tr key={p.id} className="border-b border-white/5 hover:bg-white/5">
                   <td className="p-3 font-semibold text-white">{p.name}</td>
-                  <td className="p-3 text-emerald-400">{p.store_name}</td>
+                  <td className="p-3">
+                    {isEditing ? (
+                      <div className="flex flex-col gap-2 min-w-[200px]">
+                        <select className="compact-input" value={editForm.provider_name} onChange={e => setEditForm(prev => ({...prev, provider_name: e.target.value}))}>
+                          <option value="none">Ninguno (Manual)</option>
+                          <option value="pixverify_shop">PixVerify (Shop)</option>
+                          <option value="pixverify_verification">PixVerify (Verifications)</option>
+                          <option value="prodseller">ProdSeller</option>
+                          <option value="quantumvault">QuantumVault</option>
+                        </select>
+                        {editForm.provider_name !== 'none' && (
+                          <input className="compact-input w-full" type="text" value={editForm.provider_product_id} onChange={e => setEditForm(prev => ({...prev, provider_product_id: e.target.value}))} placeholder="ID del producto (ej. 1, outlook_mail)"/>
+                        )}
+                        {editForm.provider_name === 'quantumvault' && (
+                          <input className="compact-input w-full" type="text" value={editForm.provider_variant_id} onChange={e => setEditForm(prev => ({...prev, provider_variant_id: e.target.value}))} placeholder="Variante (ej. 1_month) Opcional"/>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        {p.provider_name && p.provider_name !== 'none' ? (
+                          <div className="text-blue-400 font-bold">{p.provider_name}</div>
+                        ) : (
+                          <div className="text-slate-400 italic">Manual</div>
+                        )}
+                        {p.provider_product_id && <div className="text-xs text-slate-500">ID: {p.provider_product_id}</div>}
+                        {p.provider_variant_id && <div className="text-xs text-slate-500">Var: {p.provider_variant_id}</div>}
+                      </div>
+                    )}
+                  </td>
                   <td className="p-3">{p.stock !== null ? p.stock : 'N/A'}</td>
                   <td className="p-3">
                     {isEditing ? <input className="compact-input w-20" type="number" value={editForm.warranty_days} onChange={e => setEditForm(prev => ({...prev, warranty_days: e.target.value}))} placeholder="Días"/> : <span className={p.warranty_days ? "text-yellow-400 font-bold" : "text-slate-400"}>{p.warranty_days ? `${p.warranty_days} días` : "No"}</span>}
@@ -243,7 +271,7 @@ function InventoryTab() {
                     {isEditing ? <input className="compact-input w-48" type="url" value={editForm.custom_image_url} onChange={e => setEditForm(prev => ({...prev, custom_image_url: e.target.value}))} placeholder="https://..."/> : <div className="max-w-[150px] truncate text-slate-400">{p.custom_image_url || "Sin fijar"}</div>}
                   </td>
                   <td className="p-3">
-                    {isEditing ? <div className="flex gap-2"><button className="text-green-400 hover:text-green-300" onClick={() => updateMutation.mutate({ id: p.id, custom_usd_price: editForm.custom_usd_price ? Number(editForm.custom_usd_price) : null, custom_image_url: editForm.custom_image_url || null, warranty_days: editForm.warranty_days ? Number(editForm.warranty_days) : null })}><CheckCircle2 size={18}/></button><button className="text-red-400 hover:text-red-300" onClick={() => setEditingId(null)}><X size={18}/></button></div> : <button className="text-slate-400 hover:text-white" onClick={() => { setEditingId(p.id); setEditForm({ custom_usd_price: p.custom_usd_price?.toString() || "", custom_image_url: p.custom_image_url || "", warranty_days: p.warranty_days?.toString() || "" }); }}><Pencil size={18}/></button>}
+                    {isEditing ? <div className="flex gap-2"><button className="text-green-400 hover:text-green-300" onClick={() => updateMutation.mutate({ id: p.id, custom_usd_price: editForm.custom_usd_price ? Number(editForm.custom_usd_price) : null, custom_image_url: editForm.custom_image_url || null, warranty_days: editForm.warranty_days ? Number(editForm.warranty_days) : null, provider_name: editForm.provider_name === 'none' ? null : editForm.provider_name, provider_product_id: editForm.provider_product_id || null, provider_variant_id: editForm.provider_variant_id || null })}><CheckCircle2 size={18}/></button><button className="text-red-400 hover:text-red-300" onClick={() => setEditingId(null)}><X size={18}/></button></div> : <button className="text-slate-400 hover:text-white" onClick={() => { setEditingId(p.id); setEditForm({ custom_usd_price: p.custom_usd_price?.toString() || "", custom_image_url: p.custom_image_url || "", warranty_days: p.warranty_days?.toString() || "", provider_name: p.provider_name || "none", provider_product_id: p.provider_product_id || "", provider_variant_id: p.provider_variant_id || "" }); }}><Pencil size={18}/></button>}
                   </td>
                 </tr>
               );
@@ -296,7 +324,7 @@ function ConfigTab() {
     queryFn: () => import("@/lib/products.functions").then(m => m.getAdminConfig()) 
   });
 
-  const [form, setForm] = useState({ telegram_bot_token: "", telegram_chat_id: "", binance_pay_id: "", qr_image_url: "", binance_api_key: "", binance_secret_key: "" });
+  const [form, setForm] = useState({ telegram_bot_token: "", telegram_chat_id: "", binance_pay_id: "", qr_image_url: "", binance_api_key: "", binance_secret_key: "", pixverify_api_key: "", prodseller_api_key: "", quantumvault_api_key: "" });
 
   useEffect(() => {
     if (config) {
@@ -307,6 +335,9 @@ function ConfigTab() {
         qr_image_url: config?.qr_image_url || "",
         binance_api_key: config?.binance_api_key || "",
         binance_secret_key: config?.binance_secret_key || "",
+        pixverify_api_key: config?.pixverify_api_key || "",
+        prodseller_api_key: config?.prodseller_api_key || "",
+        quantumvault_api_key: config?.quantumvault_api_key || "",
       });
     }
   }, [config]);
@@ -438,6 +469,44 @@ function ConfigTab() {
                     value={form.binance_secret_key} 
                     onChange={e => setForm({...form, binance_secret_key: e.target.value})} 
                     placeholder="Tu Secret Key" 
+                    className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-white/5">
+              <h4 className="text-sm font-bold text-white mb-2">Proveedores API (Entrega Automática)</h4>
+              <p className="text-xs text-slate-400 mb-4">Configura las llaves de tus proveedores. Las cuentas se comprarán automáticamente usando tu saldo (Topup balance) en estas plataformas.</p>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">PixVerify API Key</label>
+                  <input 
+                    type="password" 
+                    value={form.pixverify_api_key} 
+                    onChange={e => setForm({...form, pixverify_api_key: e.target.value})} 
+                    placeholder="pk_live_..." 
+                    className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">ProdSeller API Key</label>
+                  <input 
+                    type="password" 
+                    value={form.prodseller_api_key} 
+                    onChange={e => setForm({...form, prodseller_api_key: e.target.value})} 
+                    placeholder="psk_..." 
+                    className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">QuantumVault API Key</label>
+                  <input 
+                    type="password" 
+                    value={form.quantumvault_api_key} 
+                    onChange={e => setForm({...form, quantumvault_api_key: e.target.value})} 
+                    placeholder="qv_live_..." 
                     className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                   />
                 </div>

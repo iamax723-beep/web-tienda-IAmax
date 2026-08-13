@@ -6,6 +6,7 @@ type CartItem = {
   quantity: number;
   store_name: string;
   warranty_days?: number;
+  provider_name?: string | null;
 };
 
 type CartState = {

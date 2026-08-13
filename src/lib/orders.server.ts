@@ -9,57 +9,136 @@ async function executeOrderDelivery(orderId: string, sql: any) {
   if (order.status === 'delivered') throw new Error("La orden ya fue entregada");
 
   const items = await sql`
-    SELECT oi.*, p.store_id, p.external_id as provider_id 
+    SELECT oi.*, p.store_id, p.external_id as provider_id, p.provider_name, p.provider_product_id, p.provider_variant_id
     FROM order_items oi 
     JOIN products p ON oi.product_id = p.id 
     WHERE oi.order_id = ${orderId}
   `;
   if (items.length === 0) throw new Error("La orden no tiene productos");
 
+  const settingsRows = await sql<{ key: string, value: string }[]>`SELECT key, value FROM settings WHERE key IN ('pixverify_api_key', 'prodseller_api_key', 'quantumvault_api_key')`;
+  const config: Record<string, string> = {};
+  for (const row of settingsRows) config[row.key] = row.value;
+
   // 2. Por cada item, hacer la compra en la API del proveedor
   let allKeys: string[] = [];
   
   for (const item of items) {
-    if (!item.store_id || !item.provider_id) throw new Error(`El producto ${item.product_name} no tiene proveedor o ID configurado`);
-    
-    const [store] = await sql`SELECT * FROM stores WHERE id = ${item.store_id}`;
-    if (!store || !store.api_key) throw new Error(`No se encontró la API Key para el proveedor del producto ${item.product_name}`);
-
-    const purchaseUrl = store.purchase_url || `${store.api_url.split('/v1')[0]}/v1/orders`;
-    
-    try {
-      const response = await fetch(purchaseUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": store.api_key,
-          ...(store.auth_header && store.auth_type === 'header' ? { [store.auth_header]: store.api_key } : {})
-        },
-        body: JSON.stringify({
-          product_id: item.provider_id,
-          category_id: !isNaN(Number(item.provider_id)) ? Number(item.provider_id) : item.provider_id,
-          quantity: item.quantity
-        })
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        console.error("Error from API:", result);
-        throw new Error(result.error?.message || result.error || result.message || "Error al comprar el producto");
+    if (item.provider_name && item.provider_name !== 'none') {
+      // Nueva lógica de proveedores integrados
+      if (item.provider_name === 'pixverify_shop') {
+        if (!config.pixverify_api_key) throw new Error("API Key de PixVerify no configurada");
+        const res = await fetch('https://pixverify.shop/api/v1/shop/buy', {
+          method: 'POST',
+          headers: { 'X-API-Key': config.pixverify_api_key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: Number(item.provider_product_id), quantity: item.quantity })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(`Error en PixVerify: ${data.error || 'Desconocido'}`);
+        if (data.credentials && Array.isArray(data.credentials)) {
+          allKeys.push(...data.credentials.map((k: string) => `${item.product_name}: ${k}`));
+        } else {
+          allKeys.push(`${item.product_name}: Entregado (Revisar Panel)`);
+        }
+      } 
+      else if (item.provider_name === 'pixverify_verification') {
+        if (!config.pixverify_api_key) throw new Error("API Key de PixVerify no configurada");
+        if (!order.pixverify_email || !order.pixverify_password) throw new Error("Faltan datos de verificación del cliente");
+        
+        const res = await fetch('https://pixverify.shop/api/v1/verifications/create', {
+          method: 'POST',
+          headers: { 'X-API-Key': config.pixverify_api_key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            service_id: Number(item.provider_product_id), 
+            email: order.pixverify_email,
+            password: order.pixverify_password,
+            totp: order.pixverify_totp || undefined,
+            idempotency_key: `order_${orderId}_item_${item.id}` 
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(`Error en PixVerify (Verifications): ${data.error || 'Desconocido'}`);
+        allKeys.push(`${item.product_name}: Verificación en proceso. ID: ${data.verification?.id || 'Desconocido'}`);
       }
+      else if (item.provider_name === 'prodseller') {
+        if (!config.prodseller_api_key) throw new Error("API Key de ProdSeller no configurada");
+        const res = await fetch('https://prodseller.com/v1/orders', {
+          method: 'POST',
+          headers: { 'X-API-Key': config.prodseller_api_key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: item.provider_product_id, quantity: item.quantity })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(`Error en ProdSeller: ${data.error || 'Desconocido'}`);
+        const keys = data.credentials || data.keys || [];
+        if (keys.length > 0) {
+          allKeys.push(...keys.map((k: string) => `${item.product_name}: ${k}`));
+        } else {
+          allKeys.push(`${item.product_name}: Orden Creada (Revisar Panel)`);
+        }
+      }
+      else if (item.provider_name === 'quantumvault') {
+        if (!config.quantumvault_api_key) throw new Error("API Key de QuantumVault no configurada");
+        const res = await fetch('https://www.quantumvault.me/api/v1/orders', {
+          method: 'POST',
+          headers: { 'X-API-Key': config.quantumvault_api_key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            product_id: item.provider_product_id, 
+            variant_id: item.provider_variant_id || undefined, 
+            quantity: item.quantity 
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(`Error en QuantumVault: ${data.error || 'Desconocido'}`);
+        const keys = data.credentials || data.keys || [];
+        if (keys.length > 0) {
+          allKeys.push(...keys.map((k: string) => `${item.product_name}: ${k}`));
+        } else {
+          allKeys.push(`${item.product_name}: Orden Creada (Revisar Panel)`);
+        }
+      }
+    } else {
+      // Lógica legacy para APIs dinámicas
+      if (!item.store_id || !item.provider_id) throw new Error(`El producto ${item.product_name} no tiene proveedor configurado`);
+      
+      const [store] = await sql`SELECT * FROM stores WHERE id = ${item.store_id}`;
+      if (!store || !store.api_key) throw new Error(`No se encontró la API Key para la tienda dinámica del producto ${item.product_name}`);
 
-      const keys = result.credentials || result.data?.keys || result.keys || [];
-      allKeys.push(...keys.map((k: string) => `${item.product_name}: ${k}`));
+      const purchaseUrl = store.purchase_url || `${store.api_url.split('/v1')[0]}/v1/orders`;
+      
+      try {
+        const response = await fetch(purchaseUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": store.api_key,
+            ...(store.auth_header && store.auth_type === 'header' ? { [store.auth_header]: store.api_key } : {})
+          },
+          body: JSON.stringify({
+            product_id: item.provider_id,
+            category_id: !isNaN(Number(item.provider_id)) ? Number(item.provider_id) : item.provider_id,
+            quantity: item.quantity
+          })
+        });
 
-    } catch (err: any) {
-      throw new Error(`Fallo al comprar ${item.product_name}: ${err.message}`);
+        const result = await response.json();
+        
+        if (!response.ok) {
+          console.error("Error from API:", result);
+          throw new Error(result.error?.message || result.error || result.message || "Error al comprar el producto");
+        }
+
+        const keys = result.credentials || result.data?.keys || result.keys || [];
+        allKeys.push(...keys.map((k: string) => `${item.product_name}: ${k}`));
+
+      } catch (err: any) {
+        throw new Error(`Fallo al comprar ${item.product_name}: ${err.message}`);
+      }
     }
   }
 
   // 3. Guardar las keys en la orden y marcar como entregado
   const keysText = allKeys.join("\\n");
-  await sql`UPDATE orders SET status = 'delivered', provider_order_id = ${keysText} WHERE id = ${orderId}`;
+  await sql`UPDATE orders SET status = 'delivered', provider_order_id = ${keysText}, delivered_credentials = ${keysText} WHERE id = ${orderId}`;
 }
 
 export const getPaymentMethods = createServerFn({ method: "GET" }).handler(async () => {
@@ -75,6 +154,9 @@ export const createOrder = createServerFn({ method: "POST" })
     customer_phone: z.string().min(6, "Teléfono requerido"),
     payment_method_id: z.string().uuid("Seleccione un método de pago"),
     tx_id: z.string().optional(),
+    pixverify_email: z.string().optional(),
+    pixverify_password: z.string().optional(),
+    pixverify_totp: z.string().optional(),
     items: z.array(z.object({
       product_id: z.string().uuid(),
       product_name: z.string(),
@@ -94,10 +176,12 @@ export const createOrder = createServerFn({ method: "POST" })
       const [order] = await sql`
         INSERT INTO orders (
           customer_name, customer_email, customer_phone, 
-          total_usd, total_fiat, payment_method_id, tx_id, status
+          total_usd, total_fiat, payment_method_id, tx_id, status,
+          pixverify_email, pixverify_password, pixverify_totp
         ) VALUES (
           ${data.customer_name}, ${data.customer_email}, ${data.customer_phone},
-          ${data.total_usd}, ${data.total_fiat}, ${data.payment_method_id}, ${data.tx_id || null}, 'pending'
+          ${data.total_usd}, ${data.total_fiat}, ${data.payment_method_id}, ${data.tx_id || null}, 'pending',
+          ${data.pixverify_email || null}, ${data.pixverify_password || null}, ${data.pixverify_totp || null}
         ) RETURNING id
       `;
 

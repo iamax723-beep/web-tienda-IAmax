@@ -13,5 +13,15 @@ export function getDb() {
     connect_timeout: 15,
     prepare: false,
   });
+
+  // Ensure columns exist (ignore errors if they already exist)
+  client`ALTER TABLE products ADD COLUMN provider_name TEXT`.catch(() => {});
+  client`ALTER TABLE products ADD COLUMN provider_product_id TEXT`.catch(() => {});
+  client`ALTER TABLE products ADD COLUMN provider_variant_id TEXT`.catch(() => {});
+  client`ALTER TABLE orders ADD COLUMN delivered_credentials TEXT`.catch(() => {});
+  client`ALTER TABLE orders ADD COLUMN pixverify_email TEXT`.catch(() => {});
+  client`ALTER TABLE orders ADD COLUMN pixverify_password TEXT`.catch(() => {});
+  client`ALTER TABLE orders ADD COLUMN pixverify_totp TEXT`.catch(() => {});
+
   return client;
 }

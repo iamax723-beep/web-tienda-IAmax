@@ -22,6 +22,8 @@ function Checkout() {
   const currentRate = storeData?.dollarRate ?? 1;
   const totalUsd = cart.items.reduce((sum, item) => sum + item.price_usd * item.quantity, 0);
   const totalFiat = totalUsd * currentRate;
+  
+  const requiresVerification = cart.items.some(i => i.provider_name === 'pixverify_verification');
 
   const [form, setForm] = useState({
     customer_name: "",
@@ -29,6 +31,9 @@ function Checkout() {
     customer_phone: "",
     payment_method_id: "",
     tx_id: "",
+    pixverify_email: "",
+    pixverify_password: "",
+    pixverify_totp: "",
   });
 
   const orderMutation = useMutation({
@@ -51,6 +56,9 @@ function Checkout() {
     orderMutation.mutate({
       ...form,
       tx_id: form.tx_id || undefined,
+      pixverify_email: requiresVerification ? form.pixverify_email : undefined,
+      pixverify_password: requiresVerification ? form.pixverify_password : undefined,
+      pixverify_totp: requiresVerification ? form.pixverify_totp : undefined,
       total_usd: totalUsd,
       total_fiat: totalFiat,
       items: cart.items.map(i => ({
@@ -110,6 +118,30 @@ function Checkout() {
                   </label>
                 </div>
               </section>
+
+              {requiresVerification && (
+                <section className="space-y-6">
+                  <h2 className="text-2xl font-bold flex items-center gap-3 text-blue-400">
+                    <span className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm"><ShieldCheck size={18}/></span> 
+                    Datos de la Cuenta (PixVerify)
+                  </h2>
+                  <p className="text-sm text-slate-400">El producto que seleccionaste requiere que verifiquemos tu cuenta. Ingresa los datos de acceso para que el sistema procese tu pedido de forma automática.</p>
+                  <div className="grid sm:grid-cols-2 gap-4 bg-blue-500/5 p-6 rounded-2xl border border-blue-500/20">
+                    <label className="space-y-2 col-span-full">
+                      <span className="text-sm font-semibold text-blue-300">Correo de la Cuenta *</span>
+                      <input required type="email" className="w-full h-12 bg-black/40 border border-blue-500/30 rounded-xl px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white" value={form.pixverify_email} onChange={e => setForm({...form, pixverify_email: e.target.value})} placeholder="correo@ejemplo.com" />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm font-semibold text-blue-300">Contraseña *</span>
+                      <input required type="text" className="w-full h-12 bg-black/40 border border-blue-500/30 rounded-xl px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white" value={form.pixverify_password} onChange={e => setForm({...form, pixverify_password: e.target.value})} placeholder="Tu contraseña" />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-sm font-semibold text-blue-300">Código TOTP (Autenticador)</span>
+                      <input className="w-full h-12 bg-black/40 border border-blue-500/30 rounded-xl px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white" value={form.pixverify_totp} onChange={e => setForm({...form, pixverify_totp: e.target.value})} placeholder="Opcional" />
+                    </label>
+                  </div>
+                </section>
+              )}
 
               <section className="space-y-6">
                 <h2 className="text-2xl font-bold flex items-center gap-3">

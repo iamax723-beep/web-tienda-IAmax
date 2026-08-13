@@ -166,7 +166,8 @@ function Index() {
                           price_usd: Number(product.custom_usd_price ?? (product.original_price * (1 + (data?.profitMargin || 0) / 100))),
                           image_url: product.custom_image_url || product.image_url,
                           store_name: product.stores?.name,
-                          warranty_days: product.warranty_days
+                          warranty_days: product.warranty_days,
+                          provider_name: product.provider_name
                         });
                         toast.success("Producto añadido al carrito");
                       }}>
