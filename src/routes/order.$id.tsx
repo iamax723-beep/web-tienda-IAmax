@@ -66,7 +66,7 @@ function OrderPage() {
     <div className="min-h-screen bg-background pb-24">
       <header className="border-b bg-card/50 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2 text-muted-foreground hover:text-white transition-colors font-medium text-sm">
+          <a href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors font-medium text-sm">
             <ArrowLeft className="w-4 h-4" /> Volver a la tienda
           </a>
         </div>
@@ -81,7 +81,7 @@ function OrderPage() {
           <h1 className="text-3xl font-black">
             {isPending ? "Pendiente de Pago" : isProcessing ? "Verificando Pago" : isCompleted ? "¡Pedido Entregado!" : "Estado: " + order.status}
           </h1>
-          <p className="text-muted-foreground">ID del Pedido: <span className="font-mono text-white">{order.id}</span></p>
+          <p className="text-muted-foreground">ID del Pedido: <span className="font-mono text-foreground">{order.id}</span></p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
@@ -89,9 +89,9 @@ function OrderPage() {
             <section className="bg-card rounded-[2rem] border border-white/5 p-8 shadow-xl">
               <h2 className="text-xl font-bold mb-6">Detalles del Cliente</h2>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Nombre:</span><span className="font-medium text-white">{order.customer_name}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Email:</span><span className="font-medium text-white">{order.customer_email}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Teléfono:</span><span className="font-medium text-white">{order.customer_phone}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Nombre:</span><span className="font-medium text-foreground">{order.customer_name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Email:</span><span className="font-medium text-foreground">{order.customer_email}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Teléfono:</span><span className="font-medium text-foreground">{order.customer_phone}</span></div>
               </div>
             </section>
 
@@ -101,7 +101,7 @@ function OrderPage() {
                 {items.map((item: any) => (
                   <div key={item.id} className="flex justify-between items-center pb-4 border-b border-white/5 last:border-0 last:pb-0">
                     <div>
-                      <p className="font-semibold text-white">{item.product_name}</p>
+                      <p className="font-semibold text-foreground">{item.product_name}</p>
                       <p className="text-xs text-muted-foreground">Cantidad: {item.quantity}</p>
                     </div>
                   </div>
@@ -129,7 +129,7 @@ function OrderPage() {
                 {order.payment_instructions || "No hay instrucciones adicionales."}
               </div>
               
-              {data.qrImageUrl && order.payment_method_type === 'manual' && isPending && (
+              {data.qrImageUrl && isPending && (
                 <div className="mt-6 relative z-10 text-center">
                   <p className="text-sm text-slate-300 font-semibold mb-3">Escanea este QR para pagar:</p>
                   <img src={data.qrImageUrl} alt="QR de Pago" className="w-48 h-48 mx-auto rounded-xl border border-white/10 shadow-lg object-contain bg-white" />
@@ -154,12 +154,12 @@ function OrderPage() {
 
               {order.payment_method_type === 'manual' && isPending && (
                 <div className="mt-8 relative z-10 space-y-4">
-                  <h3 className="font-bold text-white">Subir comprobante</h3>
+                  <h3 className="font-bold text-foreground">Subir comprobante</h3>
                   <p className="text-sm text-muted-foreground">Sube tu comprobante a un servicio como Imgur o similar y pega la URL aquí para que el administrador verifique tu pago.</p>
                   <div className="flex gap-2">
-                    <input type="url" value={proofUrl} onChange={(e) => setProofUrl(e.target.value)} placeholder="https://..." className="flex-1 h-12 bg-black/50 border border-white/10 rounded-xl px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" />
+                    <input type="url" value={proofUrl} onChange={(e) => setProofUrl(e.target.value)} placeholder="https://..." className="flex-1 h-12 bg-black/10 dark:bg-black/50 border border-white/10 rounded-xl px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" />
                     <Button onClick={() => proofMutation.mutate()} disabled={!proofUrl || proofMutation.isPending} className="h-12 bg-primary hover:bg-primary/80">
-                      {proofMutation.isPending ? <LoaderCircle className="animate-spin w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                      {proofMutation.isPending ? <LoaderCircle className="animate-spin w-4 h-4" /> : <Upload className="w-4 h-4 text-white" />}
                     </Button>
                   </div>
                 </div>

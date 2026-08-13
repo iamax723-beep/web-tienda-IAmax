@@ -77,7 +77,7 @@ function Checkout() {
     <div className="min-h-screen bg-background pb-24">
       <header className="border-b bg-card/50 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2 text-muted-foreground hover:text-white transition-colors font-medium text-sm">
+          <a href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors font-medium text-sm">
             <ArrowLeft className="w-4 h-4" /> Volver
           </a>
           <div className="font-black tracking-tight flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-emerald-400" /> Pago Seguro</div>
@@ -126,7 +126,7 @@ function Checkout() {
                           <input type="radio" name="payment_method" value={pm.id} className="sr-only" onChange={() => setForm({...form, payment_method_id: pm.id})} checked={form.payment_method_id === pm.id} />
                           <span className="flex flex-1">
                             <span className="flex flex-col">
-                              <span className="block text-sm font-bold text-white">{pm.name}</span>
+                              <span className="block text-sm font-bold text-foreground">{pm.name}</span>
                               <span className="mt-1 flex items-center text-xs text-muted-foreground">{pm.type === 'crypto' ? 'Automático (Criptomonedas)' : 'Verificación Manual'}</span>
                             </span>
                           </span>
@@ -172,7 +172,7 @@ function Checkout() {
                       {item.image_url ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" /> : null}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate text-white">{item.name}</p>
+                      <p className="font-semibold text-sm truncate text-foreground">{item.name}</p>
                       <p className="text-xs text-muted-foreground">{item.quantity} x ${(item.price_usd * currentRate).toFixed(2)}</p>
                     </div>
                     <div className="font-bold text-sm text-right whitespace-nowrap">
