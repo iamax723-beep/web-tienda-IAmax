@@ -48,15 +48,21 @@ async function fetchExternalProducts(store: StoreRecord) {
     const parsedStock = rawStock !== undefined && rawStock !== null ? parseInt(String(rawStock), 10) : null;
     
     let rawPrice = read(store.field_mapping.price);
+    
+    // Si la API devuelve el precio como un objeto (ej: { amount: 1.5, currency: 'USD' })
+    if (rawPrice && typeof rawPrice === 'object' && !Array.isArray(rawPrice)) {
+      rawPrice = (rawPrice as any).amount ?? (rawPrice as any).value ?? (rawPrice as any).price ?? rawPrice;
+    }
+
     if (typeof rawPrice === 'string') {
-      // Remover cualquier caracter que no sea número o punto (por ejemplo signos de dólar)
+      // Remover caracteres como $ o letras
       rawPrice = rawPrice.replace(/[^0-9.]/g, '');
     }
     const parsedPrice = Number(rawPrice ?? 0);
 
     return {
       id: String(read(store.field_mapping.id) ?? index),
-      name: Object.keys(record).join(', '), // MODO DEBUG KEYS
+      name: String(read(store.field_mapping.name) ?? "Producto sin nombre"),
       description: String(read(store.field_mapping.description) ?? ""),
       price: parsedPrice, 
       image: String(read(store.field_mapping.image) ?? ""),
